@@ -13,6 +13,7 @@ SERVICE_ROOT="${SERVICE_ROOT:-/workspace/metatrader5-service/service}"
 SERVICE_MAIN_LINUX="${SERVICE_ROOT}/main.py"
 SERVICE_LOCKFILE="${SERVICE_ROOT}/uv.lock"
 SERVICE_VENV_PYTHON_LINUX="${SERVICE_ROOT}/.venv/Scripts/python.exe"
+UV_LINUX_EXE="${UV_LINUX_EXE:-${WINEPREFIX}/drive_c/Program Files/uv/uv.exe}"
 
 HTTP_ENV="${HTTP_ENV:-dev}"
 HTTP_PORT="${HTTP_PORT:-8000}"
@@ -55,17 +56,8 @@ ensure_mt5_running() {
   fi
 }
 
-resolve_windows_python() {
-  PYTHON_LINUX_EXE="$(find_windows_python || true)"
-  [[ -n "${PYTHON_LINUX_EXE}" ]] || http_fail "Windows Python executable not found in ${WINEPREFIX}"
-  PYTHON_WIN_EXE="$(winepath -w "${PYTHON_LINUX_EXE}")"
-}
-
 resolve_windows_uv() {
-  local python_dir
-  python_dir="$(dirname "${PYTHON_LINUX_EXE}")"
-  UV_LINUX_EXE="${python_dir}/Scripts/uv.exe"
-  [[ -f "${UV_LINUX_EXE}" ]] || http_fail "uv.exe not found next to Windows Python: ${UV_LINUX_EXE}"
+  [[ -f "${UV_LINUX_EXE}" ]] || http_fail "uv.exe not found in Wine prefix: ${UV_LINUX_EXE}"
   UV_WIN_EXE="$(winepath -w "${UV_LINUX_EXE}")"
 }
 

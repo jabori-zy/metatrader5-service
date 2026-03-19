@@ -47,11 +47,11 @@ MT5_INSTALL_START=$SECONDS
 MT5_INSTALL_DURATION=$((SECONDS - MT5_INSTALL_START))
 log "MT5 installation completed in ${MT5_INSTALL_DURATION}s"
 
-log "running Windows Python and uv installation"
-PYTHON_INSTALL_START=$SECONDS
-/scripts/build/install-python.sh || fail "Windows Python and uv first-time installation failed, check ${MT5_LOG_FILE}"
-PYTHON_INSTALL_DURATION=$((SECONDS - PYTHON_INSTALL_START))
-log "Windows Python and uv installation completed in ${PYTHON_INSTALL_DURATION}s"
+log "running Windows uv installation"
+UV_INSTALL_START=$SECONDS
+/scripts/build/install-uv.sh || fail "Windows uv first-time installation failed, check ${MT5_LOG_FILE}"
+UV_INSTALL_DURATION=$((SECONDS - UV_INSTALL_START))
+log "Windows uv installation completed in ${UV_INSTALL_DURATION}s"
 
 [[ -f "${MT5_LINUX_EXE}" ]] || fail "terminal64.exe not found: ${MT5_LINUX_EXE}"
 
@@ -64,7 +64,10 @@ for _ in $(seq 1 30); do
   if pgrep -fa terminal64.exe >/dev/null; then
     TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
     log "MetaTrader 5 started"
-    log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, python_install=${PYTHON_INSTALL_DURATION}s, total=${TOTAL_DURATION}s"
+    # HTTP startup is intentionally disabled for now.
+    # Re-enable /scripts/runtime/http-start.sh after validating Wine uv startup.
+    log "HTTP startup is disabled in this phase"
+    log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, total=${TOTAL_DURATION}s"
     cleanup_startup_marker
     wait "${MT5_PID}"
     exit $?

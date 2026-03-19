@@ -1,8 +1,8 @@
 ARG BUILD_DATE
 ARG VERSION=dev
 ARG MT5_SETUP_URL="https://download.terminal.free/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe"
-ARG PYTHON_VERSION=3.9.13
-ARG PYTHON_SETUP_URL="https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-amd64.exe"
+ARG UV_VERSION=0.10.11
+ARG UV_WINDOWS_ZIP_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-pc-windows-msvc.zip"
 ARG WINE_VERSION=10.0.0.0~bookworm-1
 
 FROM ghcr.io/linuxserver/baseimage-kasmvnc:debianbookworm
@@ -10,8 +10,8 @@ FROM ghcr.io/linuxserver/baseimage-kasmvnc:debianbookworm
 ARG BUILD_DATE
 ARG VERSION
 ARG MT5_SETUP_URL
-ARG PYTHON_VERSION
-ARG PYTHON_SETUP_URL
+ARG UV_VERSION
+ARG UV_WINDOWS_ZIP_URL
 ARG WINE_VERSION
 
 LABEL org.opencontainers.image.title="metatrader5-docker"
@@ -31,8 +31,8 @@ ENV TITLE=MetaTrader5 \
     WINE_GECKO_DIR=/opt/wine-offline/gecko \
     WINE_MONO_DIR=/opt/wine-offline/mono \
     MT5_SETUP_URL=${MT5_SETUP_URL} \
-    PYTHON_VERSION=${PYTHON_VERSION} \
-    PYTHON_SETUP_URL=${PYTHON_SETUP_URL} \
+    UV_VERSION=${UV_VERSION} \
+    UV_WINDOWS_ZIP_URL=${UV_WINDOWS_ZIP_URL} \
     MT5_CMD_OPTIONS=
 
 RUN dpkg --add-architecture i386 \
@@ -77,7 +77,7 @@ RUN dpkg --add-architecture i386 \
 COPY --chmod=644 scripts/lib/common.sh /scripts/lib/common.sh
 COPY --chmod=755 scripts/build/download-offline-assets.sh /scripts/build/download-offline-assets.sh
 COPY --chmod=755 scripts/build/install-mt5.sh /scripts/build/install-mt5.sh
-COPY --chmod=755 scripts/build/install-python.sh /scripts/build/install-python.sh
+COPY --chmod=755 scripts/build/install-uv.sh /scripts/build/install-uv.sh
 COPY --chmod=755 scripts/build/preinstall-runtime.sh /scripts/build/preinstall-runtime.sh
 
 RUN /scripts/build/preinstall-runtime.sh
@@ -91,7 +91,7 @@ COPY root /
 RUN chmod 755 /scripts /scripts/build /scripts/runtime /scripts/lib \
     && chmod 755 /scripts/build/download-offline-assets.sh \
         /scripts/build/install-mt5.sh \
-        /scripts/build/install-python.sh \
+        /scripts/build/install-uv.sh \
         /scripts/build/preinstall-runtime.sh \
         /scripts/runtime/bootstrap-prefix.sh \
         /scripts/runtime/launch-mt5.sh \

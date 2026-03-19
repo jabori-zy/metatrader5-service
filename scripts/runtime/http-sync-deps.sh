@@ -7,7 +7,6 @@ source "${SCRIPT_DIR}/http-env.sh"
 
 ensure_http_dirs
 require_http_runtime
-resolve_windows_python
 resolve_windows_uv
 
 http_log "syncing service dependencies with uv"
@@ -16,8 +15,7 @@ http_log "syncing service dependencies with uv"
   run_gui wine "${UV_LINUX_EXE}" sync \
     --frozen \
     --no-install-project \
-    --python-platform windows \
-    --python "${PYTHON_WIN_EXE}"
+    --python-platform windows
 ) >>"${HTTP_LOG_FILE}" 2>&1 || http_fail "uv sync failed"
 
 [[ -f "${SERVICE_VENV_PYTHON_LINUX}" ]] || http_fail "service venv Python not found after sync: ${SERVICE_VENV_PYTHON_LINUX}"

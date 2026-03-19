@@ -1,10 +1,10 @@
 # MT5 Docker V2
 
-一个单用户、启动时安装 MT5 和 Python 的 MetaTrader 5 容器镜像：
+一个单用户、启动时安装 MT5 和 Windows uv 的 MetaTrader 5 容器镜像：
 
 - 1 用户 = 1 容器 = 1 Wine prefix = 1 MT5 = 1 KasmVNC 会话
 - Wine 和离线安装资源在镜像构建期准备
-- MT5、Windows Python 和 `MetaTrader5` Python 包都在容器首次启动时安装到 `/config/.wine`
+- MT5 和 Windows `uv` 都在容器首次启动时安装到 `/config/.wine`
 - 当前默认不挂载或持久化 Wine prefix
 - 容器删除后，本地运行时数据、缓存和日志都会丢失
 - 用户登录信息、业务配置等应由外部数据库或调度层管理
@@ -23,8 +23,6 @@
 ```bash
 cp .env.example .env
 ```
-
-如需切换 Windows Python 版本，可在 `.env` 中修改 `PYTHON_VERSION`。
 
 2. 构建镜像：
 
@@ -50,7 +48,7 @@ http://<ec2-public-ip>:3000
 
 - 运行时 Wine prefix 固定在 `/config/.wine`
 - 容器启动时如果未检测到 `terminal64.exe`，会先执行 MT5 首次安装
-- MT5 安装完成后，如果未检测到 Windows Python，会继续安装 Windows Python 和 `MetaTrader5` Python 包
+- MT5 安装完成后，会继续安装 Windows `uv`
 - 启动脚本会直接运行：
 
 ```text
@@ -59,7 +57,7 @@ wine "C:\Program Files\MetaTrader 5\terminal64.exe" /portable
 
 - 如果设置了 `MT5_CMD_OPTIONS`，会追加到启动命令后面
 - 运行期日志会同时输出到容器标准输出和 `/config/logs/mt5.log`
-- 本仓库当前不实现 HTTP 服务，也不在容器内读取数据库
+- 当前阶段只验证 `uv` 在 Wine 中可启动，HTTP 服务启动流程暂时禁用
 - 未来如需接入用户配置，建议由外部调度层按用户拉起容器，并通过环境变量或 secrets 注入配置引用
 
 ## 多用户部署方式
@@ -96,16 +94,10 @@ docker compose exec mt5 pgrep -fa terminal64.exe
 docker compose exec mt5 test -f '/config/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe'
 ```
 
-检查 Windows Python：
+检查 Windows uv：
 
 ```bash
-docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; wine python --version'
-```
-
-验证 `MetaTrader5` 包：
-
-```bash
-docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; wine python -c "import MetaTrader5; print(MetaTrader5.__version__)"'
+docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" --version'
 ```
 
 检查离线资源：
@@ -126,7 +118,7 @@ docker compose exec mt5 bash -lc 'find /opt/installers /opt/wine-offline -maxdep
     ├── build
     │   ├── download-offline-assets.sh
     │   ├── install-mt5.sh
-    │   ├── install-python.sh
+    │   ├── install-uv.sh
     │   └── preinstall-runtime.sh
     ├── lib
     │   └── common.sh
@@ -138,9 +130,10 @@ docker compose exec mt5 bash -lc 'find /opt/installers /opt/wine-offline -maxdep
 
 ## 注意事项
 
-- 可通过 `PYTHON_VERSION` 调整下载和安装的 Windows Python 版本；安装器文件名和解释器路径会随版本联动
-- 构建期只准备 Wine 和离线安装资源；Wine prefix、MT5 和 Python 安装都发生在首次启动
+- 构建期只准备 Wine 和离线安装资源；Wine prefix、MT5 和 Windows uv 安装都发生在首次启动
 - `mt5setup.exe` 仍然是官方引导安装器，首次启动安装 MT5 时依然可能联网下载 MT5 主体
+- Windows `uv` 通过 GitHub Releases 的预编译二进制压缩包提供，当前阶段只验证 `uv --version`
+- HTTP 相关脚本暂不接入容器启动链路；待 `uv` 管理 Python/venv 验证通过后再恢复
 - 运行时不持久化本地数据，因此容器重建后不会保留运行期产生的文件
 - `docker-compose.yml` 只是本地单实例 demo；生产环境应由外部编排系统按用户拉起多个容器
 - KasmVNC 基础认证只适合开发/测试环境，不建议直接裸露到公网

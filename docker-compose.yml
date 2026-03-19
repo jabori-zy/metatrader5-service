@@ -2,8 +2,6 @@ services:
   mt5:
     build:
       context: .
-      args:
-        PYTHON_VERSION: ${PYTHON_VERSION:-3.9.13}
     image: metatrader5-docker:dev
     platform: linux/amd64
     restart: unless-stopped
