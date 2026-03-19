@@ -114,7 +114,7 @@ docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; wine "/config
 手工安装 Python：
 
 ```bash
-docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace/metatrader5-service/service; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" python install 3.14.3'
+docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace/metatrader5-service/service; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" python install 3.9.13'
 ```
 
 手工同步服务依赖：
