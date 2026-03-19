@@ -9,9 +9,16 @@ services:
       - seccomp:unconfined
     ports:
       - "3000:3000"
+      - "${HTTP_PORT:-8000}:${HTTP_PORT:-8000}"
+    volumes:
+      - .:/workspace/metatrader5-service
     environment:
       CUSTOM_USER: ${CUSTOM_USER}
       PASSWORD: ${PASSWORD}
       PUID: ${PUID}
       PGID: ${PGID}
       MT5_CMD_OPTIONS: ${MT5_CMD_OPTIONS:-}
+      HTTP_PORT: ${HTTP_PORT:-8000}
+      MT5_LOGIN: ${MT5_LOGIN:-}
+      MT5_PASSWORD: ${MT5_PASSWORD:-}
+      MT5_SERVER: ${MT5_SERVER:-}

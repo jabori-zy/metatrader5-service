@@ -5,8 +5,8 @@
 - 1 用户 = 1 容器 = 1 Wine prefix = 1 MT5 = 1 KasmVNC 会话
 - Wine 和离线安装资源在镜像构建期准备
 - MT5 和 Windows `uv` 都在容器首次启动时安装到 `/config/.wine`
-- 当前默认不挂载或持久化 Wine prefix
-- 容器删除后，本地运行时数据、缓存和日志都会丢失
+- 当前 `docker-compose.yml` 不持久化 `/config`
+- `docker-compose.yml` 默认挂载当前仓库到 `/workspace/metatrader5-service`，供后续手工验证 HTTP 链路
 - 用户登录信息、业务配置等应由外部数据库或调度层管理
 
 ## 前提
@@ -44,11 +44,21 @@ http://<ec2-public-ip>:3000
 
 使用 `.env` 中的 `CUSTOM_USER` 和 `PASSWORD` 登录 KasmVNC。
 
+如需后续手工验证 HTTP 链路，请先在 `.env` 中补齐：
+
+```bash
+HTTP_PORT=8000
+MT5_LOGIN=
+MT5_PASSWORD=
+MT5_SERVER=
+```
+
 ## 运行模型
 
 - 运行时 Wine prefix 固定在 `/config/.wine`
 - 容器启动时如果未检测到 `terminal64.exe`，会先执行 MT5 首次安装
 - MT5 安装完成后，会继续安装 Windows `uv`
+- 容器删除后，`/config/.wine`、日志和运行时状态都会一起删除
 - 启动脚本会直接运行：
 
 ```text
@@ -58,6 +68,7 @@ wine "C:\Program Files\MetaTrader 5\terminal64.exe" /portable
 - 如果设置了 `MT5_CMD_OPTIONS`，会追加到启动命令后面
 - 运行期日志会同时输出到容器标准输出和 `/config/logs/mt5.log`
 - 当前阶段只验证 `uv` 在 Wine 中可启动，HTTP 服务启动流程暂时禁用
+- 当前 `docker-compose.yml` 已暴露 `HTTP_PORT` 并挂载服务源码，但 HTTP 仍需手工触发，不会自动启动
 - 未来如需接入用户配置，建议由外部调度层按用户拉起容器，并通过环境变量或 secrets 注入配置引用
 
 ## 多用户部署方式
@@ -98,6 +109,18 @@ docker compose exec mt5 test -f '/config/.wine/drive_c/Program Files/MetaTrader 
 
 ```bash
 docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" --version'
+```
+
+手工安装 Python：
+
+```bash
+docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace/metatrader5-service/service; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" python install 3.14.3'
+```
+
+手工同步服务依赖：
+
+```bash
+docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace/metatrader5-service/service; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" sync --frozen --no-install-project --python-platform windows'
 ```
 
 检查离线资源：
