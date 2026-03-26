@@ -1,10 +1,10 @@
 # MT5 Docker V2
 
-一个单用户、启动时安装 MT5 和 Windows uv 的 MetaTrader 5 容器镜像：
+一个单用户、启动时准备 MT5 和安装 Windows uv 的 MetaTrader 5 容器镜像：
 
 - 1 用户 = 1 容器 = 1 Wine prefix = 1 MT5 = 1 KasmVNC 会话
-- Wine 和离线安装资源在镜像构建期准备
-- MT5 和 Windows `uv` 都在容器首次启动时安装到 `/config/.wine`
+- Wine、离线安装资源和打包好的 `MetaTrader 5` 目录在镜像构建期准备
+- 容器启动时会将镜像内的 `MetaTrader 5` 目录复制到 `/config/.wine`，并安装 Windows `uv`
 - 当前 `docker-compose.yml` 不持久化 `/config`
 - `docker-compose.yml` 默认挂载当前仓库到 `/workspace/metatrader5-service`，供后续手工验证 HTTP 链路
 - 用户登录信息、业务配置等应由外部数据库或调度层管理
@@ -56,8 +56,8 @@ MT5_SERVER=
 ## 运行模型
 
 - 运行时 Wine prefix 固定在 `/config/.wine`
-- 容器启动时如果未检测到 `terminal64.exe`，会先执行 MT5 首次安装
-- MT5 安装完成后，会继续安装 Windows `uv`
+- 容器启动时会先把镜像内的 `MetaTrader 5` 目录复制到 Wine 的 `C:\\Program Files`
+- MT5 文件复制完成后，会继续安装 Windows `uv`
 - 容器删除后，`/config/.wine`、日志和运行时状态都会一起删除
 - 启动脚本会直接运行：
 
@@ -76,8 +76,8 @@ wine "C:\Program Files\MetaTrader 5\terminal64.exe" /portable
 - 不要在单个容器里运行多个 Wine 环境
 - 正确方式是在同一台 Docker 主机上运行多个此类容器
 - 每个容器承载一个用户实例
-- 由于基础环境已预装到镜像层，多容器会共享镜像层；每个容器仍会在首次启动时各自完成 MT5 安装
-- 由于基础环境已预装到镜像层，多容器会共享镜像层；每个容器仍会在首次启动时各自完成 `/config/.wine` 初始化、MT5 安装和 Python 安装
+- 由于基础环境已预装到镜像层，多容器会共享镜像层；每个容器仍会在首次启动时各自完成 `MetaTrader 5` 目录复制
+- 由于基础环境已预装到镜像层，多容器会共享镜像层；每个容器仍会在首次启动时各自完成 `/config/.wine` 初始化、MT5 文件复制和 Windows uv 安装
 
 ## 常用命令
 
@@ -129,6 +129,12 @@ docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace
 docker compose exec mt5 bash -lc 'find /opt/installers /opt/wine-offline -maxdepth 3 -type f | sort'
 ```
 
+检查镜像内打包的 MetaTrader 5 目录：
+
+```bash
+docker compose exec mt5 bash -lc 'find "/opt/MetaTrader 5" -maxdepth 2 -type f | sort'
+```
+
 ## 仓库结构
 
 ```text
@@ -142,6 +148,7 @@ docker compose exec mt5 bash -lc 'find /opt/installers /opt/wine-offline -maxdep
     │   ├── download-offline-assets.sh
     │   ├── install-mt5.sh
     │   ├── install-uv.sh
+    │   ├── prepare-mt5-resource.sh
     │   └── preinstall-runtime.sh
     ├── lib
     │   └── common.sh
@@ -153,8 +160,9 @@ docker compose exec mt5 bash -lc 'find /opt/installers /opt/wine-offline -maxdep
 
 ## 注意事项
 
-- 构建期只准备 Wine 和离线安装资源；Wine prefix、MT5 和 Windows uv 安装都发生在首次启动
-- `mt5setup.exe` 仍然是官方引导安装器，首次启动安装 MT5 时依然可能联网下载 MT5 主体
+- 构建期会准备 Wine、离线安装资源以及镜像内的 `/opt/MetaTrader 5`
+- 当前阶段不再使用 `mt5setup.exe` 在运行期安装 MT5，而是直接复制镜像内的 `MetaTrader 5` 目录到 Wine prefix
+- `mt5setup.exe` 仍然会在构建期下载并保留，供后续需要时恢复安装器路径
 - Windows `uv` 通过 GitHub Releases 的预编译二进制压缩包提供，当前阶段只验证 `uv --version`
 - HTTP 相关脚本暂不接入容器启动链路；待 `uv` 管理 Python/venv 验证通过后再恢复
 - 运行时不持久化本地数据，因此容器重建后不会保留运行期产生的文件

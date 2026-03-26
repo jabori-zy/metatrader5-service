@@ -14,4 +14,7 @@ fail() {
 log "downloading offline assets"
 "${SCRIPT_DIR}/download-offline-assets.sh"
 
+log "preparing bundled MetaTrader 5 resources"
+"${SCRIPT_DIR}/prepare-mt5-resource.sh"
+
 log "preinstalled runtime is ready"

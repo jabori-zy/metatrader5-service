@@ -19,6 +19,7 @@ def start_server(env: str, port: int, terminal_path: str, login:int, password:st
     logger = logging.getLogger("MetaTrader5-service")
     logger.info("Starting MetaTrader5-service, env: %s, port: %s", env, port)
     logger.info("API docs: http://localhost:%s/docs", port)
+    logger.info("Start to init terminal")
 
     try:
         init_terminal(login, password, server, terminal_path)
