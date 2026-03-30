@@ -12,11 +12,7 @@ logging.basicConfig(
     level=logging.DEBUG,
     handlers=[handler]
 )
-
-
-
-
-def create_app(terminal, login, password, server, terminal_path ) -> FastAPI:
+def create_app(terminal) -> FastAPI:
 
     app = FastAPI(
         title="MetaTrader5 Service",

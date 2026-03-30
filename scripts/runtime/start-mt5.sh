@@ -62,10 +62,6 @@ log "Windows Python installation completed in ${PYTHON_INSTALL_DURATION}s"
 [[ -f "${MT5_LINUX_EXE}" ]] || fail "terminal64.exe not found: ${MT5_LINUX_EXE}"
 
 log "terminal64.exe is ready at ${MT5_LINUX_EXE}"
-# MetaTrader 5 is no longer started here.
-# The HTTP service is responsible for initializing MetaTrader 5 and starting terminal64.exe
-# via MetaTrader5.initialize(..., terminal_path=...).
-#
 log "starting MetaTrader 5"
 # shellcheck disable=SC2086
 wine "${MT5_LINUX_EXE}" /portable ${MT5_CMD_OPTIONS:-} >>"${MT5_LOG_FILE}" 2>&1 &

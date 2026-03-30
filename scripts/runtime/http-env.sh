@@ -55,9 +55,6 @@ require_http_runtime() {
   [[ -d "${SERVICE_ROOT}" ]] || http_fail "service root not found: ${SERVICE_ROOT}"
   [[ -f "${SERVICE_MAIN_LINUX}" ]] || http_fail "service entrypoint not found: ${SERVICE_MAIN_LINUX}"
   [[ -f "${SERVICE_LOCKFILE}" ]] || http_fail "service lockfile not found: ${SERVICE_LOCKFILE}"
-  [[ -n "${MT5_LOGIN:-}" ]] || http_fail "MT5_LOGIN is required"
-  [[ -n "${MT5_PASSWORD:-}" ]] || http_fail "MT5_PASSWORD is required"
-  [[ -n "${MT5_SERVER:-}" ]] || http_fail "MT5_SERVER is required"
 }
 
 ensure_mt5_running() {

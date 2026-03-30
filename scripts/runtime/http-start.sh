@@ -7,9 +7,8 @@ source "${SCRIPT_DIR}/http-env.sh"
 
 ensure_http_dirs
 require_http_runtime
-# HTTP service now owns terminal startup through MetaTrader5.initialize(..., terminal_path=...).
-# Keep the old preflight for reference, but do not require terminal64.exe to be running here.
-# ensure_mt5_running
+# HTTP service starts without MT5 credentials.
+# Terminal initialization and account login are now driven by HTTP APIs.
 
 if http_pid_is_running; then
   http_log "HTTP service is already running"
@@ -28,11 +27,7 @@ http_log "starting HTTP service"
   exec </dev/null >>"${HTTP_LOG_FILE}" 2>&1
   run_gui wine "${SERVICE_VENV_PYTHON_LINUX}" "${SERVICE_MAIN_WIN}" \
     --env "${HTTP_ENV}" \
-    --port "${HTTP_PORT}" \
-    --terminal-path "${MT5_TERMINAL_PATH}" \
-    --login "${MT5_LOGIN}" \
-    --password "${MT5_PASSWORD}" \
-    --server "${MT5_SERVER}"
+    --port "${HTTP_PORT}"
 ) &
 
 HTTP_PID=$!
