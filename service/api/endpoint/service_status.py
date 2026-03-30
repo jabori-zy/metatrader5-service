@@ -9,9 +9,11 @@ from service_state import (
     SERVICE_STATUS_MANUAL_LOGIN_FAILED,
     SERVICE_STATUS_NEEDS_MANUAL_LOGIN,
     SERVICE_STATUS_READY,
+    SERVICE_REASON_USER_CONFIG_UPLOAD_FAILED,
     get_service_status,
     set_service_status,
 )
+from user_config import UserConfigUploadError, upload_current_user_config
 
 
 class ConfirmManualLoginRequest(BaseModel):
@@ -106,19 +108,37 @@ def create_router(terminal):
                 {"service_status": get_service_status(request.app)},
             )
 
+        try:
+            upload_settings = upload_current_user_config()
+        except UserConfigUploadError as exc:
+            updated_service_status = set_service_status(
+                request.app,
+                status=SERVICE_STATUS_READY,
+                reason=SERVICE_REASON_USER_CONFIG_UPLOAD_FAILED,
+                message="Manual login confirmed, but failed to upload Config.zip to S3.",
+                manual_login_required=False,
+            )
+            logger.error("failed to upload Config.zip after manual login: %s", exc)
+            return response_error(
+                -1,
+                str(exc),
+                {"service_status": updated_service_status},
+            )
+
         updated_service_status = set_service_status(
             request.app,
             status=SERVICE_STATUS_READY,
             reason=None,
-            message="Manual login confirmed and terminal is ready.",
+            message="Manual login confirmed and Config.zip uploaded to S3.",
             manual_login_required=False,
         )
         logger.info(
-            "manual login confirmed, terminal_path=%s portable=%s login=%s server=%s",
+            "manual login confirmed, terminal_path=%s portable=%s login=%s server=%s uploaded_key=%s",
             terminal_path,
             portable,
             payload.login,
             payload.server,
+            upload_settings.object_key,
         )
         return response_success({
             "confirmed": True,

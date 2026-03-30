@@ -42,6 +42,10 @@ class UserConfigApplyError(UserConfigError):
     pass
 
 
+class UserConfigUploadError(UserConfigError):
+    pass
+
+
 @dataclass(frozen=True)
 class UserConfigSettings:
     s3_bucket_name: str
@@ -173,6 +177,63 @@ def _apply_user_config_zip(zip_bytes: bytes, target_config_dir: str) -> None:
         _replace_config_directory(extracted_config_dir, target_config_dir)
 
 
+def _build_user_config_zip_bytes(source_config_dir: str) -> bytes:
+    if not os.path.isdir(source_config_dir):
+        raise UserConfigUploadError("Config directory not found: %s" % source_config_dir)
+
+    zip_buffer = io.BytesIO()
+    source_parent_dir = os.path.dirname(source_config_dir)
+
+    try:
+        with zipfile.ZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for root, _, files in os.walk(source_config_dir):
+                rel_root = os.path.relpath(root, source_parent_dir)
+                if rel_root == ".":
+                    rel_root = os.path.basename(source_config_dir)
+                normalized_rel_root = rel_root.replace("\\", "/").rstrip("/")
+                archive.writestr(normalized_rel_root + "/", b"")
+                for file_name in files:
+                    file_path = os.path.join(root, file_name)
+                    arcname = os.path.join(normalized_rel_root, file_name).replace("\\", "/")
+                    archive.write(file_path, arcname)
+    except Exception as exc:
+        raise UserConfigUploadError("Failed to build Config.zip: %s" % str(exc)) from exc
+
+    return zip_buffer.getvalue()
+
+
+def _upload_user_config_zip(settings: UserConfigSettings, zip_bytes: bytes) -> None:
+    try:
+        logger.info(
+            "uploading user config to S3: bucket=%s key=%s bytes=%s",
+            settings.s3_bucket_name,
+            settings.object_key,
+            len(zip_bytes),
+        )
+        _create_s3_client(settings).put_object(
+            Bucket=settings.s3_bucket_name,
+            Key=settings.object_key,
+            Body=zip_bytes,
+            ContentType="application/zip",
+        )
+        logger.info(
+            "uploaded user config to S3: bucket=%s key=%s",
+            settings.s3_bucket_name,
+            settings.object_key,
+        )
+    except (NoCredentialsError, PartialCredentialsError) as exc:
+        raise UserConfigUploadError("Failed to upload Config.zip to S3: AWS credentials are not available.") from exc
+    except ClientError as exc:
+        error = exc.response.get("Error", {})
+        error_code = str(error.get("Code", ""))
+        error_message = str(error.get("Message", ""))
+        raise UserConfigUploadError(
+            "Failed to upload Config.zip to S3: %s %s" % (error_code or "ClientError", error_message)
+        ) from exc
+    except BotoCoreError as exc:
+        raise UserConfigUploadError("Failed to upload Config.zip to S3: %s" % str(exc)) from exc
+
+
 def download_and_apply_user_config() -> UserConfigSettings:
     settings = get_user_config_settings()
     logger.info(
@@ -184,4 +245,18 @@ def download_and_apply_user_config() -> UserConfigSettings:
     )
     zip_bytes = _download_user_config_zip(settings)
     _apply_user_config_zip(zip_bytes, settings.target_config_dir)
+    return settings
+
+
+def upload_current_user_config() -> UserConfigSettings:
+    settings = get_user_config_settings()
+    logger.info(
+        "resolved upload settings: bucket=%s region=%s key=%s source=%s",
+        settings.s3_bucket_name,
+        settings.aws_region,
+        settings.object_key,
+        settings.target_config_dir,
+    )
+    zip_bytes = _build_user_config_zip_bytes(settings.target_config_dir)
+    _upload_user_config_zip(settings, zip_bytes)
     return settings
