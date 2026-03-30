@@ -64,10 +64,13 @@ for _ in $(seq 1 30); do
   if pgrep -fa terminal64.exe >/dev/null; then
     TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
     log "MetaTrader 5 started"
-    # HTTP startup is intentionally disabled for now.
-    # Re-enable /scripts/runtime/http-start.sh after validating Wine uv startup.
-    log "HTTP startup is disabled in this phase"
-    log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, total=${TOTAL_DURATION}s"
+    log "starting HTTP service"
+    HTTP_START_TIME=$SECONDS
+    /scripts/runtime/http-start.sh || fail "HTTP startup failed, check /config/logs/http.log"
+    HTTP_START_DURATION=$((SECONDS - HTTP_START_TIME))
+    TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
+    log "HTTP service started in ${HTTP_START_DURATION}s"
+    log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, http_start=${HTTP_START_DURATION}s, total=${TOTAL_DURATION}s"
     cleanup_startup_marker
     wait "${MT5_PID}"
     exit $?

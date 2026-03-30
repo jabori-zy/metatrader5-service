@@ -67,8 +67,8 @@ wine "C:\Program Files\MetaTrader 5\terminal64.exe" /portable
 
 - 如果设置了 `MT5_CMD_OPTIONS`，会追加到启动命令后面
 - 运行期日志会同时输出到容器标准输出和 `/config/logs/mt5.log`
-- 当前阶段只验证 `uv` 在 Wine 中可启动，HTTP 服务启动流程暂时禁用
-- 当前 `docker-compose.yml` 已暴露 `HTTP_PORT` 并挂载服务源码，但 HTTP 仍需手工触发，不会自动启动
+- 容器启动时会在 MT5 就绪后自动同步依赖并启动 HTTP 服务
+- 当前 `docker-compose.yml` 已暴露 `HTTP_PORT` 并挂载服务源码，便于后续只通过 `git pull` 更新上层服务代码
 - 未来如需接入用户配置，建议由外部调度层按用户拉起容器，并通过环境变量或 secrets 注入配置引用
 
 ## 多用户部署方式
@@ -123,6 +123,12 @@ docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace
 docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace/metatrader5-service/service; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" sync --frozen --no-install-project --python-platform windows'
 ```
 
+重启 HTTP 服务：
+
+```bash
+docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; /scripts/runtime/http-restart.sh'
+```
+
 检查离线资源：
 
 ```bash
@@ -154,6 +160,11 @@ docker compose exec mt5 bash -lc 'find "/opt/MetaTrader 5" -maxdepth 2 -type f |
     │   └── common.sh
     └── runtime
         ├── bootstrap-prefix.sh
+        ├── http-env.sh
+        ├── http-start.sh
+        ├── http-stop.sh
+        ├── http-restart.sh
+        ├── http-sync-deps.sh
         ├── healthcheck.sh
         └── start-mt5.sh
 ```
@@ -164,7 +175,7 @@ docker compose exec mt5 bash -lc 'find "/opt/MetaTrader 5" -maxdepth 2 -type f |
 - 当前阶段不再使用 `mt5setup.exe` 在运行期安装 MT5，而是直接复制镜像内的 `MetaTrader 5` 目录到 Wine prefix
 - `mt5setup.exe` 仍然会在构建期下载并保留，供后续需要时恢复安装器路径
 - Windows `uv` 通过 GitHub Releases 的预编译二进制压缩包提供，当前阶段只验证 `uv --version`
-- HTTP 相关脚本暂不接入容器启动链路；待 `uv` 管理 Python/venv 验证通过后再恢复
+- HTTP 相关脚本已接入容器启动链路；容器启动时会在 MT5 就绪后调用 `/scripts/runtime/http-start.sh`
 - 运行时不持久化本地数据，因此容器重建后不会保留运行期产生的文件
 - `docker-compose.yml` 只是本地单实例 demo；生产环境应由外部编排系统按用户拉起多个容器
 - KasmVNC 基础认证只适合开发/测试环境，不建议直接裸露到公网
