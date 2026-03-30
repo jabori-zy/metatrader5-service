@@ -43,16 +43,6 @@ def is_initialized(terminal) -> bool:
     return terminal.terminal_info() is not None
 
 
-def is_terminal_running() -> bool:
-    result = subprocess.run(
-        ["pgrep", "-fa", "terminal64.exe"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return result.returncode == 0
-
-
 def start_terminal_process(terminal_path: str, portable: bool) -> tuple[bool, str]:
     if not os.path.exists(terminal_path):
         return False, f"terminal executable not found: {terminal_path}"
@@ -76,13 +66,16 @@ def start_terminal_process(terminal_path: str, portable: bool) -> tuple[bool, st
     return True, ""
 
 
-def wait_for_terminal_process(timeout_seconds: int) -> bool:
+def wait_for_initialize(terminal, terminal_path: str, portable: bool, timeout_seconds: int) -> tuple[bool, tuple[int, str]]:
     deadline = time.time() + timeout_seconds
+    last_error = (-1, "initialize timed out")
     while time.time() < deadline:
-        if is_terminal_running():
-            return True
+        init_result = terminal.initialize(terminal_path=terminal_path, portable=portable)
+        if init_result:
+            return True, (0, "")
+        last_error = get_last_error(terminal)
         time.sleep(1)
-    return False
+    return False, last_error
 
 
 
@@ -104,29 +97,37 @@ def create_router(terminal):
 
         try:
             if not is_initialized(terminal):
-                terminal_running = is_terminal_running()
+                init_result = terminal.initialize(terminal_path=terminal_path, portable=portable)
+                if init_result:
+                    return response_success({
+                        "initialized": True,
+                        "portable": portable,
+                        "terminal_path": terminal_path,
+                    })
+
+                initial_error = get_last_error(terminal)
                 logger.info(
-                    "initialize requested, terminal_path=%s portable=%s running=%s",
+                    "initialize requested, terminal_path=%s portable=%s initial_error=%s",
                     terminal_path,
                     portable,
-                    terminal_running,
+                    initial_error,
                 )
 
-                if not terminal_running:
-                    launch_ok, launch_message = start_terminal_process(terminal_path, portable)
-                    if not launch_ok:
-                        return response_error(-1, f"Start terminal failed: {launch_message}")
+                launch_ok, launch_message = start_terminal_process(terminal_path, portable)
+                if not launch_ok:
+                    return response_error(-1, f"Start terminal failed: {launch_message}")
 
-                if not wait_for_terminal_process(INITIALIZE_TIMEOUT_SECONDS):
+                initialized, initialize_error = wait_for_initialize(
+                    terminal,
+                    terminal_path,
+                    portable,
+                    INITIALIZE_TIMEOUT_SECONDS,
+                )
+                if not initialized:
                     return response_error(
-                        -1,
-                        f"Timed out waiting for terminal64.exe after {INITIALIZE_TIMEOUT_SECONDS}s",
+                        initialize_error[0],
+                        f"Timed out waiting for terminal initialization after {INITIALIZE_TIMEOUT_SECONDS}s: {initialize_error[1]}",
                     )
-
-                init_result = terminal.initialize(terminal_path=terminal_path, portable=portable)
-                if not init_result:
-                    last_error = get_last_error(terminal)
-                    return response_error(last_error[0], last_error[1])
 
             return response_success({
                 "initialized": True,
