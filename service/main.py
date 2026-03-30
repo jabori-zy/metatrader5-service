@@ -39,8 +39,10 @@ def start_server(env: str, port: int, terminal_path: str, login:int, password:st
 def init_terminal(login:int, password:str, server:str, terminal_path:str, portable:bool):
     logging.info("Start to init terminal, terminal_path: %s", terminal_path)
     if portable:
+        logging.info("Initializing terminal in portable mode")
         init_result = MetaTrader5.initialize(login=login, password=password, server=server, terminal_path=terminal_path, portable=True)
     else:
+        logging.info("Initializing terminal in main mode")
         init_result = MetaTrader5.initialize(login=login, password=password, server=server, terminal_path=terminal_path)
 
     if not init_result:
