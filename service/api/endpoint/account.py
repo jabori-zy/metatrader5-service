@@ -59,7 +59,7 @@ def normalize_terminal_path(terminal_path: Optional[str]) -> str:
     normalized = terminal_path.strip()
     if normalized == "" or normalized.lower() == "string":
         return DEFAULT_TERMINAL_PATH
-    return normalized
+    return normalized.replace("/", "\\")
 
 
 def start_terminal_process(terminal_path: str, portable: bool) -> tuple[bool, str]:
@@ -76,13 +76,14 @@ def start_terminal_process(terminal_path: str, portable: bool) -> tuple[bool, st
     creationflags |= detached_process | create_new_process_group
 
     try:
-        subprocess.Popen(
+        process = subprocess.Popen(
             command,
+            cwd=os.path.dirname(terminal_path) or None,
             creationflags=creationflags,
         )
+        return True, f"pid={process.pid}"
     except Exception as exc:
         return False, str(exc)
-    return True, ""
 
 
 def wait_for_initialize(terminal, terminal_path: str, portable: bool, timeout_seconds: int) -> tuple[bool, tuple[int, str]]:
@@ -135,6 +136,12 @@ def create_router(terminal):
                 launch_ok, launch_message = start_terminal_process(terminal_path, portable)
                 if not launch_ok:
                     return response_error(-1, f"Start terminal failed: {launch_message}")
+                logger.info(
+                    "terminal start requested, terminal_path=%s portable=%s result=%s",
+                    terminal_path,
+                    portable,
+                    launch_message,
+                )
 
                 initialized, initialize_error = wait_for_initialize(
                     terminal,
