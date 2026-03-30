@@ -19,7 +19,7 @@ def start_server(env: str, port: int, terminal_path: str, login:int, password:st
     logger = logging.getLogger("MetaTrader5-service")
     logger.info("Starting MetaTrader5-service, env: %s, port: %s", env, port)
     logger.info("API docs: http://localhost:%s/docs", port)
-    logger.info("Start to init terminal")
+    
 
     try:
         init_terminal(login, password, server, terminal_path)
@@ -38,7 +38,8 @@ def start_server(env: str, port: int, terminal_path: str, login:int, password:st
 
 def init_terminal(login:int, password:str, server:str, terminal_path:str):
     # init_result = MetaTrader5.initialize(login=login, password=password, server=server, terminal_path=terminal_path)
-    init_result = MetaTrader5.initialize(terminal_path)
+    logging.info("Start to init terminal, terminal_path: %s", terminal_path)
+    init_result = MetaTrader5.initialize()
 
     if not init_result:
         logging.error("terminal initialized failed, error: %s", MetaTrader5.last_error())
