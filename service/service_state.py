@@ -3,6 +3,7 @@ from datetime import datetime
 import logging
 from typing import Optional
 from fastapi import FastAPI
+from mt5_runtime import DEFAULT_TERMINAL_PATH, start_terminal_process
 from user_config import (
     AwsCredentialsUnavailableError,
     UserConfigApplyError,
@@ -14,6 +15,7 @@ from user_config import (
 SERVICE_STATUS_STARTING = "STARTING"
 SERVICE_STATUS_PULLING_USER_CONFIG = "PULLING_USER_CONFIG"
 SERVICE_STATUS_NEEDS_MANUAL_LOGIN = "NEEDS_MANUAL_LOGIN"
+SERVICE_STATUS_MANUAL_LOGIN_FAILED = "MANUAL_LOGIN_FAILED"
 SERVICE_STATUS_READY = "READY"
 SERVICE_STATUS_ERROR = "ERROR"
 
@@ -21,11 +23,13 @@ SERVICE_STATUSES = [
     SERVICE_STATUS_STARTING,
     SERVICE_STATUS_PULLING_USER_CONFIG,
     SERVICE_STATUS_NEEDS_MANUAL_LOGIN,
+    SERVICE_STATUS_MANUAL_LOGIN_FAILED,
     SERVICE_STATUS_READY,
     SERVICE_STATUS_ERROR,
 ]
 
 SERVICE_REASON_USER_CONFIG_NOT_FOUND = "USER_CONFIG_NOT_FOUND"
+SERVICE_REASON_MANUAL_LOGIN_TERMINAL_LAUNCH_FAILED = "MANUAL_LOGIN_TERMINAL_LAUNCH_FAILED"
 SERVICE_REASON_AWS_CREDENTIALS_NOT_AVAILABLE = "AWS_CREDENTIALS_NOT_AVAILABLE"
 SERVICE_REASON_USER_CONFIG_DOWNLOAD_FAILED = "USER_CONFIG_DOWNLOAD_FAILED"
 SERVICE_REASON_USER_CONFIG_APPLY_FAILED = "USER_CONFIG_APPLY_FAILED"
@@ -129,6 +133,18 @@ async def run_service_startup_check(app: FastAPI) -> None:
             message="User config not found in S3. Manual login is required.",
             manual_login_required=True,
         )
+        launch_ok, launch_message = start_terminal_process(DEFAULT_TERMINAL_PATH, True)
+        if launch_ok:
+            logger.info("manual login terminal started: %s", launch_message)
+        else:
+            logger.error("failed to start manual login terminal: %s", launch_message)
+            set_service_status(
+                app,
+                status=SERVICE_STATUS_MANUAL_LOGIN_FAILED,
+                reason=SERVICE_REASON_MANUAL_LOGIN_TERMINAL_LAUNCH_FAILED,
+                message=launch_message,
+                manual_login_required=True,
+            )
     except AwsCredentialsUnavailableError as exc:
         logger.error("aws credentials are not available: %s", exc)
         set_service_status(

@@ -13,7 +13,7 @@ from botocore.exceptions import BotoCoreError, ClientError, NoCredentialsError, 
 
 DEFAULT_S3_BUCKET_NAME = "metatrader5-config-dev-824597117854-ap-southeast-1-an"
 DEFAULT_AWS_REGION = "ap-southeast-1"
-DEFAULT_USER_CONFIG_USER_ID = "0"
+DEFAULT_USER_CONFIG_USER_ID = "1"
 DEFAULT_USER_CONFIG_SERVER = "EBCFinancialGroupKY-Demo"
 DEFAULT_USER_CONFIG_ACCOUNT = "51236"
 DEFAULT_USER_CONFIG_OBJECT_NAME = "Config.zip"

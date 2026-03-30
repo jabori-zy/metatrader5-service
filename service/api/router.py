@@ -10,7 +10,7 @@ def create_router(terminal):
     router = APIRouter()
     account_router  = account.create_router(terminal)
     health_router  = health.create_router(terminal)
-    service_status_router  = service_status.create_router()
+    service_status_router  = service_status.create_router(terminal)
     # # 创建交易品种路由
     # symbol_router  = symbol.create_router(terminal)
     # # 创建市场路由
@@ -31,5 +31,4 @@ def create_router(terminal):
     # router.include_router(basic_router)
     # router.include_router(position_router)
     return router
-
 

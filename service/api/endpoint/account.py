@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Body, Request
 from typing import Optional
-import logging
-import os
-import subprocess
-import time
 from pydantic import BaseModel
 from api.response import response_success, response_error
+from mt5_runtime import (
+    DEFAULT_TERMINAL_PATH,
+    get_account_info_data,
+    initialize_terminal,
+    is_initialized,
+    login_terminal,
+    normalize_terminal_path,
+)
 from service_state import SERVICE_STATUS_READY, get_service_status
-
-DEFAULT_TERMINAL_PATH = "C:/Program Files/MetaTrader 5/terminal64.exe"
-INITIALIZE_TIMEOUT_SECONDS = 60
 
 
 class InitializeRequest(BaseModel):
@@ -41,68 +42,8 @@ class LoginRequest(BaseModel):
         }
     }
 
-
-def get_last_error(terminal) -> tuple[int, str]:
-    last_error = terminal.last_error()
-    if isinstance(last_error, tuple) and len(last_error) >= 2:
-        return int(last_error[0]), str(last_error[1])
-    return -1, str(last_error)
-
-
-def is_initialized(terminal) -> bool:
-    return terminal.terminal_info() is not None
-
-
-def normalize_terminal_path(terminal_path: Optional[str]) -> str:
-    if terminal_path is None:
-        return DEFAULT_TERMINAL_PATH
-
-    normalized = terminal_path.strip()
-    if normalized == "" or normalized.lower() == "string":
-        return DEFAULT_TERMINAL_PATH
-    return normalized.replace("/", "\\")
-
-
-def start_terminal_process(terminal_path: str, portable: bool) -> tuple[bool, str]:
-    if not os.path.exists(terminal_path):
-        return False, f"terminal executable not found: {terminal_path}"
-
-    command = [terminal_path]
-    if portable:
-        command.append("/portable")
-
-    creationflags = 0
-    detached_process = getattr(subprocess, "DETACHED_PROCESS", 0)
-    create_new_process_group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    creationflags |= detached_process | create_new_process_group
-
-    try:
-        process = subprocess.Popen(
-            command,
-            cwd=os.path.dirname(terminal_path) or None,
-            creationflags=creationflags,
-        )
-        return True, f"pid={process.pid}"
-    except Exception as exc:
-        return False, str(exc)
-
-
-def wait_for_initialize(terminal, terminal_path: str, portable: bool, timeout_seconds: int) -> tuple[bool, tuple[int, str]]:
-    deadline = time.time() + timeout_seconds
-    last_error = (-1, "initialize timed out")
-    while time.time() < deadline:
-        init_result = terminal.initialize(terminal_path=terminal_path, portable=portable)
-        if init_result:
-            return True, (0, "")
-        last_error = get_last_error(terminal)
-        time.sleep(1)
-    return False, last_error
-
-
-
 def create_router(terminal):
     router = APIRouter(tags=["account"])
-    logger = logging.getLogger("MetaTrader5-service.account")
 
     @router.post("/initialize")
     async def initialize(request: Request, payload: Optional[InitializeRequest] = Body(default=None)):
@@ -125,44 +66,14 @@ def create_router(terminal):
                     {"service_status": service_status},
                 )
 
-            if not is_initialized(terminal):
-                init_result = terminal.initialize(terminal_path=terminal_path, portable=portable)
-                if init_result:
-                    return response_success({
-                        "initialized": True,
-                        "portable": portable,
-                        "terminal_path": terminal_path,
-                    })
-
-                initial_error = get_last_error(terminal)
-                logger.info(
-                    "initialize requested, terminal_path=%s portable=%s initial_error=%s",
-                    terminal_path,
-                    portable,
-                    initial_error,
-                )
-
-                launch_ok, launch_message = start_terminal_process(terminal_path, portable)
-                if not launch_ok:
-                    return response_error(-1, f"Start terminal failed: {launch_message}")
-                logger.info(
-                    "terminal start requested, terminal_path=%s portable=%s result=%s",
-                    terminal_path,
-                    portable,
-                    launch_message,
-                )
-
-                initialized, initialize_error = wait_for_initialize(
-                    terminal,
-                    terminal_path,
-                    portable,
-                    INITIALIZE_TIMEOUT_SECONDS,
-                )
-                if not initialized:
-                    return response_error(
-                        initialize_error[0],
-                        f"Timed out waiting for terminal initialization after {INITIALIZE_TIMEOUT_SECONDS}s: {initialize_error[1]}",
-                    )
+            initialized, initialize_error, terminal_path, portable = initialize_terminal(
+                terminal,
+                terminal_path=terminal_path,
+                portable=portable,
+                launch_if_needed=True,
+            )
+            if not initialized:
+                return response_error(initialize_error[0], initialize_error[1])
 
             return response_success({
                 "initialized": True,
@@ -181,14 +92,14 @@ def create_router(terminal):
             if not is_initialized(terminal):
                 return response_error(-1, "terminal is not initialized; call /initialize first")
 
-            login_result = terminal.login(
+            login_ok, login_error = login_terminal(
+                terminal,
                 login=payload.login,
                 password=payload.password,
                 server=payload.server,
             )
-            if not login_result:
-                last_error = get_last_error(terminal)
-                return response_error(last_error[0], last_error[1])
+            if not login_ok:
+                return response_error(login_error[0], login_error[1])
 
             return response_success({
                 "logged_in": True,
@@ -206,12 +117,10 @@ def create_router(terminal):
         get the detailed information of the current MT5 account, including balance, equity, margin, free margin, etc.
         """
         try:
-            account_info = terminal.account_info()
-
-            if not account_info:
-                last_error = get_last_error(terminal)
-                return response_error(last_error[0], last_error[1])
-            return response_success(account_info._asdict())
+            account_info_ok, account_info, account_info_error = get_account_info_data(terminal)
+            if not account_info_ok:
+                return response_error(account_info_error[0], account_info_error[1])
+            return response_success(account_info)
 
         except Exception as e:
             return response_error(-1, f"Get account info failed: {str(e)}")
