@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Request
 from typing import Optional
 import logging
 import os
@@ -6,6 +6,7 @@ import subprocess
 import time
 from pydantic import BaseModel
 from api.response import response_success, response_error
+from service_state import SERVICE_STATUS_READY, get_service_status
 
 DEFAULT_TERMINAL_PATH = "C:/Program Files/MetaTrader 5/terminal64.exe"
 INITIALIZE_TIMEOUT_SECONDS = 60
@@ -104,9 +105,9 @@ def create_router(terminal):
     logger = logging.getLogger("MetaTrader5-service.account")
 
     @router.post("/initialize")
-    async def initialize(payload: Optional[InitializeRequest] = Body(default=None)):
+    async def initialize(request: Request, payload: Optional[InitializeRequest] = Body(default=None)):
         """
-        Initialize MetaTrader 5 runtime in portable mode.
+        Initialize MetaTrader 5 runtime.
         """
         terminal_path = DEFAULT_TERMINAL_PATH
         portable = True
@@ -116,6 +117,14 @@ def create_router(terminal):
             portable = payload.portable
 
         try:
+            service_status = get_service_status(request.app)
+            if service_status["status"] != SERVICE_STATUS_READY:
+                return response_error(
+                    -1,
+                    "Service is not ready for MT5 initialization.",
+                    {"service_status": service_status},
+                )
+
             if not is_initialized(terminal):
                 init_result = terminal.initialize(terminal_path=terminal_path, portable=portable)
                 if init_result:
