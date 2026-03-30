@@ -36,6 +36,7 @@ def create_app(terminal) -> FastAPI:
     )
 
     initialize_service_status(app)
+    app.state.terminal = terminal
 
     @app.on_event("startup")
     async def startup_event():

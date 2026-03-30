@@ -4,7 +4,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from api.response import response_error, response_success
-from mt5_runtime import DEFAULT_TERMINAL_PATH, get_account_info_data, initialize_terminal, login_terminal
+from mt5_runtime import DEFAULT_TERMINAL_PATH, get_account_info_data, initialize_and_login_terminal
 from service_state import (
     SERVICE_STATUS_MANUAL_LOGIN_FAILED,
     SERVICE_STATUS_NEEDS_MANUAL_LOGIN,
@@ -74,29 +74,19 @@ def create_router(terminal):
 
         logger.info("confirm_manual_login requested for login=%s server=%s", payload.login, payload.server)
 
-        initialized, initialize_error, terminal_path, portable = initialize_terminal(
-            terminal,
-            terminal_path=DEFAULT_TERMINAL_PATH,
-            portable=True,
-            launch_if_needed=False,
-        )
-        if not initialized:
-            return response_error(
-                initialize_error[0],
-                initialize_error[1],
-                {"service_status": get_service_status(request.app)},
-            )
-
-        login_ok, login_error = login_terminal(
+        initialized_and_logged_in, initialize_or_login_error, terminal_path, portable = initialize_and_login_terminal(
             terminal,
             login=payload.login,
             password=payload.password,
             server=payload.server,
+            terminal_path=DEFAULT_TERMINAL_PATH,
+            portable=True,
+            launch_if_needed=False,
         )
-        if not login_ok:
+        if not initialized_and_logged_in:
             return response_error(
-                login_error[0],
-                login_error[1],
+                initialize_or_login_error[0],
+                initialize_or_login_error[1],
                 {"service_status": get_service_status(request.app)},
             )
 

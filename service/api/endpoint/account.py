@@ -3,23 +3,27 @@ from typing import Optional
 from pydantic import BaseModel
 from api.response import response_success, response_error
 from mt5_runtime import (
-    DEFAULT_TERMINAL_PATH,
     get_account_info_data,
-    initialize_terminal,
+    initialize_and_login_terminal,
     is_initialized,
     login_terminal,
-    normalize_terminal_path,
 )
 from service_state import SERVICE_STATUS_READY, get_service_status
 
 
 class InitializeRequest(BaseModel):
+    login: int
+    password: str
+    server: str
     terminal_path: Optional[str] = None
     portable: Optional[bool] = None
 
     model_config = {
         "json_schema_extra": {
             "example": {
+                "login": 51236,
+                "password": "HhazJ520....",
+                "server": "EBCFinancialGroupKY-Demo",
                 "terminal_path": "C:/Program Files/MetaTrader 5/terminal64.exe",
                 "portable": True,
             }
@@ -46,15 +50,13 @@ def create_router(terminal):
     router = APIRouter(tags=["account"])
 
     @router.post("/initialize")
-    async def initialize(request: Request, payload: Optional[InitializeRequest] = Body(default=None)):
+    async def initialize(request: Request, payload: InitializeRequest = Body(...)):
         """
-        Initialize MetaTrader 5 runtime.
+        Initialize MetaTrader 5 runtime and login immediately.
         """
-        terminal_path = DEFAULT_TERMINAL_PATH
+        terminal_path = payload.terminal_path
         portable = True
-        if payload:
-            terminal_path = normalize_terminal_path(payload.terminal_path)
-        if payload and payload.portable is not None:
+        if payload.portable is not None:
             portable = payload.portable
 
         try:
@@ -66,17 +68,23 @@ def create_router(terminal):
                     {"service_status": service_status},
                 )
 
-            initialized, initialize_error, terminal_path, portable = initialize_terminal(
+            initialized_and_logged_in, initialize_or_login_error, terminal_path, portable = initialize_and_login_terminal(
                 terminal,
+                login=payload.login,
+                password=payload.password,
+                server=payload.server,
                 terminal_path=terminal_path,
                 portable=portable,
                 launch_if_needed=True,
             )
-            if not initialized:
-                return response_error(initialize_error[0], initialize_error[1])
+            if not initialized_and_logged_in:
+                return response_error(initialize_or_login_error[0], initialize_or_login_error[1])
 
             return response_success({
                 "initialized": True,
+                "logged_in": True,
+                "login": payload.login,
+                "server": payload.server,
                 "portable": portable,
                 "terminal_path": terminal_path,
             })

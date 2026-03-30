@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 from typing import Optional
 from fastapi import FastAPI
-from mt5_runtime import DEFAULT_TERMINAL_PATH, start_terminal_process
+from mt5_runtime import DEFAULT_TERMINAL_PATH, initialize_terminal, start_terminal_process
 from user_config import (
     AwsCredentialsUnavailableError,
     UserConfigApplyError,
@@ -33,6 +33,7 @@ SERVICE_REASON_MANUAL_LOGIN_TERMINAL_LAUNCH_FAILED = "MANUAL_LOGIN_TERMINAL_LAUN
 SERVICE_REASON_AWS_CREDENTIALS_NOT_AVAILABLE = "AWS_CREDENTIALS_NOT_AVAILABLE"
 SERVICE_REASON_USER_CONFIG_DOWNLOAD_FAILED = "USER_CONFIG_DOWNLOAD_FAILED"
 SERVICE_REASON_USER_CONFIG_APPLY_FAILED = "USER_CONFIG_APPLY_FAILED"
+SERVICE_REASON_USER_CONFIG_INITIALIZE_FAILED = "USER_CONFIG_INITIALIZE_FAILED"
 SERVICE_REASON_USER_CONFIG_UPLOAD_FAILED = "USER_CONFIG_UPLOAD_FAILED"
 SERVICE_REASON_STARTUP_CHECK_FAILED = "SERVICE_STARTUP_CHECK_FAILED"
 
@@ -118,11 +119,47 @@ async def run_service_startup_check(app: FastAPI) -> None:
             settings.object_key,
             settings.target_config_dir,
         )
+        initialized, initialize_error, terminal_path, portable = initialize_terminal(
+            app.state.terminal,
+            terminal_path=DEFAULT_TERMINAL_PATH,
+            portable=True,
+            launch_if_needed=True,
+        )
+        if not initialized:
+            logger.warning(
+                "automatic initialize failed after user config apply: terminal_path=%s portable=%s error=%s",
+                terminal_path,
+                portable,
+                initialize_error,
+            )
+            if initialize_error[1].startswith("Start terminal failed:"):
+                set_service_status(
+                    app,
+                    status=SERVICE_STATUS_MANUAL_LOGIN_FAILED,
+                    reason=SERVICE_REASON_MANUAL_LOGIN_TERMINAL_LAUNCH_FAILED,
+                    message=initialize_error[1],
+                    manual_login_required=True,
+                )
+            else:
+                set_service_status(
+                    app,
+                    status=SERVICE_STATUS_NEEDS_MANUAL_LOGIN,
+                    reason=SERVICE_REASON_USER_CONFIG_INITIALIZE_FAILED,
+                    message="User config downloaded and applied, but terminal initialize failed: %s" % initialize_error[1],
+                    manual_login_required=True,
+                )
+            return
+
+        logger.info(
+            "user config downloaded, applied, and terminal initialized: terminal_path=%s portable=%s",
+            terminal_path,
+            portable,
+        )
         set_service_status(
             app,
             status=SERVICE_STATUS_READY,
             reason=None,
-            message="User config downloaded and applied.",
+            message="User config downloaded, applied, and terminal initialized.",
             manual_login_required=False,
         )
     except UserConfigNotFoundError:

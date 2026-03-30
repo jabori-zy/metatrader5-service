@@ -123,6 +123,36 @@ def initialize_terminal(
     return True, (0, ""), normalized_terminal_path, portable
 
 
+def initialize_and_login_terminal(
+    terminal,
+    login: int,
+    password: str,
+    server: str,
+    terminal_path: Optional[str] = None,
+    portable: bool = True,
+    launch_if_needed: bool = True,
+) -> Tuple[bool, Tuple[int, str], str, bool]:
+    initialized, initialize_error, normalized_terminal_path, portable = initialize_terminal(
+        terminal,
+        terminal_path=terminal_path,
+        portable=portable,
+        launch_if_needed=launch_if_needed,
+    )
+    if not initialized:
+        return False, initialize_error, normalized_terminal_path, portable
+
+    login_ok, login_error = login_terminal(
+        terminal,
+        login=login,
+        password=password,
+        server=server,
+    )
+    if not login_ok:
+        return False, login_error, normalized_terminal_path, portable
+
+    return True, (0, ""), normalized_terminal_path, portable
+
+
 def login_terminal(terminal, login: int, password: str, server: str) -> Tuple[bool, Tuple[int, str]]:
     login_result = terminal.login(
         login=login,
