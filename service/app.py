@@ -14,7 +14,10 @@ logging.basicConfig(
     level=logging.DEBUG,
     handlers=[handler]
 )
+
+
 def create_app(terminal) -> FastAPI:
+    logger = logging.getLogger("MetaTrader5-service.app")
 
     app = FastAPI(
         title="MetaTrader5 Service",
@@ -36,12 +39,14 @@ def create_app(terminal) -> FastAPI:
 
     @app.on_event("startup")
     async def startup_event():
+        logger.info("scheduling service startup check")
         app.state.service_status_task = asyncio.create_task(run_service_startup_check(app))
 
     @app.on_event("shutdown")
     async def shutdown_event():
         task = getattr(app.state, "service_status_task", None)
         if task is not None and not task.done():
+            logger.info("cancelling service startup check")
             task.cancel()
 
     router = create_router(terminal)
