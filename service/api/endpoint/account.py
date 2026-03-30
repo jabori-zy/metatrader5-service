@@ -8,9 +8,7 @@ from pydantic import BaseModel
 from api.response import response_success, response_error
 
 DEFAULT_TERMINAL_PATH = "C:/Program Files/MetaTrader 5/terminal64.exe"
-DEFAULT_TERMINAL_PATH_LINUX = "/config/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe"
 INITIALIZE_TIMEOUT_SECONDS = 60
-LAUNCH_MT5_SCRIPT = "/scripts/runtime/launch-mt5.sh"
 
 
 class InitializeRequest(BaseModel):
@@ -55,28 +53,27 @@ def is_terminal_running() -> bool:
     return result.returncode == 0
 
 
-def windows_to_linux_terminal_path(terminal_path: str) -> str:
-    normalized = terminal_path.replace("\\", "/")
-    if normalized == DEFAULT_TERMINAL_PATH:
-        return DEFAULT_TERMINAL_PATH_LINUX
-    return normalized
+def start_terminal_process(terminal_path: str, portable: bool) -> tuple[bool, str]:
+    if not os.path.exists(terminal_path):
+        return False, f"terminal executable not found: {terminal_path}"
 
+    command = [terminal_path]
+    if portable:
+        command.append("/portable")
 
-def launch_mt5(terminal_path: str, portable: bool) -> tuple[bool, str]:
-    env = os.environ.copy()
-    env["MT5_TERMINAL_PATH"] = windows_to_linux_terminal_path(terminal_path)
-    env["MT5_PORTABLE"] = "true" if portable else "false"
-    result = subprocess.run(
-        ["bash", LAUNCH_MT5_SCRIPT],
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-    )
-    if result.returncode != 0:
-        error_message = result.stderr.strip() or result.stdout.strip() or "launch-mt5.sh failed"
-        return False, error_message
-    return True, result.stdout.strip()
+    creationflags = 0
+    detached_process = getattr(subprocess, "DETACHED_PROCESS", 0)
+    create_new_process_group = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    creationflags |= detached_process | create_new_process_group
+
+    try:
+        subprocess.Popen(
+            command,
+            creationflags=creationflags,
+        )
+    except Exception as exc:
+        return False, str(exc)
+    return True, ""
 
 
 def wait_for_terminal_process(timeout_seconds: int) -> bool:
@@ -107,15 +104,18 @@ def create_router(terminal):
 
         try:
             if not is_initialized(terminal):
+                terminal_running = is_terminal_running()
                 logger.info(
                     "initialize requested, terminal_path=%s portable=%s running=%s",
                     terminal_path,
                     portable,
-                    is_terminal_running(),
+                    terminal_running,
                 )
-                launch_ok, launch_message = launch_mt5(terminal_path, portable)
-                if not launch_ok:
-                    return response_error(-1, f"Launch terminal failed: {launch_message}")
+
+                if not terminal_running:
+                    launch_ok, launch_message = start_terminal_process(terminal_path, portable)
+                    if not launch_ok:
+                        return response_error(-1, f"Start terminal failed: {launch_message}")
 
                 if not wait_for_terminal_process(INITIALIZE_TIMEOUT_SECONDS):
                     return response_error(
