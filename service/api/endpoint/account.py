@@ -15,6 +15,15 @@ class InitializeRequest(BaseModel):
     terminal_path: Optional[str] = None
     portable: Optional[bool] = None
 
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "terminal_path": "C:/Program Files/MetaTrader 5/terminal64.exe",
+                "portable": True,
+            }
+        }
+    }
+
 
 class LoginRequest(BaseModel):
     login: int
@@ -41,6 +50,16 @@ def get_last_error(terminal) -> tuple[int, str]:
 
 def is_initialized(terminal) -> bool:
     return terminal.terminal_info() is not None
+
+
+def normalize_terminal_path(terminal_path: Optional[str]) -> str:
+    if terminal_path is None:
+        return DEFAULT_TERMINAL_PATH
+
+    normalized = terminal_path.strip()
+    if normalized == "" or normalized.lower() == "string":
+        return DEFAULT_TERMINAL_PATH
+    return normalized
 
 
 def start_terminal_process(terminal_path: str, portable: bool) -> tuple[bool, str]:
@@ -90,8 +109,8 @@ def create_router(terminal):
         """
         terminal_path = DEFAULT_TERMINAL_PATH
         portable = True
-        if payload and payload.terminal_path:
-            terminal_path = payload.terminal_path
+        if payload:
+            terminal_path = normalize_terminal_path(payload.terminal_path)
         if payload and payload.portable is not None:
             portable = payload.portable
 
