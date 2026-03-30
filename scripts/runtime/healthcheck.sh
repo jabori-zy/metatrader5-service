@@ -21,10 +21,15 @@ if [[ ! -f "${MT5_LINUX_EXE}" ]]; then
   exit 1
 fi
 
+if ! pgrep -fa terminal64.exe >/dev/null; then
+  printf '[healthcheck] terminal64.exe process not detected\n' >&2
+  exit 1
+fi
+
 # MetaTrader 5 is no longer required to be prestarted by the container entrypoint.
-# Keep the old process check for reference.
-# if ! pgrep -fa terminal64.exe >/dev/null; then
-#   printf '[healthcheck] terminal64.exe process not detected\n' >&2
+# Keep the HTTP-only healthcheck for reference.
+# if ! curl -fsS --max-time 2 "http://127.0.0.1:${HTTP_PORT}/" >/dev/null 2>&1; then
+#   printf '[healthcheck] HTTP service is not ready on port %s\n' "${HTTP_PORT}" >&2
 #   exit 1
 # fi
 

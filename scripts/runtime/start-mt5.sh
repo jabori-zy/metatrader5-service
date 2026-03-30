@@ -60,17 +60,22 @@ log "terminal64.exe is ready at ${MT5_LINUX_EXE}"
 # The HTTP service is responsible for initializing MetaTrader 5 and starting terminal64.exe
 # via MetaTrader5.initialize(..., terminal_path=...).
 #
-# log "starting MetaTrader 5"
+log "starting MetaTrader 5"
 # shellcheck disable=SC2086
-# wine "${MT5_LINUX_EXE}" /portable ${MT5_CMD_OPTIONS:-} >>"${MT5_LOG_FILE}" 2>&1 &
-# MT5_PID=$!
-#
-# for _ in $(seq 1 30); do
-#   if pgrep -fa terminal64.exe >/dev/null; then
-#     break
-#   fi
-#   sleep 2
-# done
+wine "${MT5_LINUX_EXE}" /portable ${MT5_CMD_OPTIONS:-} >>"${MT5_LOG_FILE}" 2>&1 &
+MT5_PID=$!
+
+for _ in $(seq 1 30); do
+  if pgrep -fa terminal64.exe >/dev/null; then
+    log "MetaTrader 5 started"
+    break
+  fi
+  sleep 2
+done
+
+if ! pgrep -fa terminal64.exe >/dev/null; then
+  fail "MetaTrader 5 process failed to start, check ${MT5_LOG_FILE}"
+fi
 
 log "starting HTTP service"
 HTTP_START_TIME=$SECONDS
@@ -90,8 +95,12 @@ HTTP_PID="$(tr -d '[:space:]' <"${HTTP_PID_FILE}")"
 [[ -n "${HTTP_PID}" ]] || fail "HTTP pid file is empty: ${HTTP_PID_FILE}"
 
 log "monitoring HTTP service pid ${HTTP_PID}"
-while kill -0 "${HTTP_PID}" 2>/dev/null; do
+while kill -0 "${HTTP_PID}" 2>/dev/null && kill -0 "${MT5_PID}" 2>/dev/null; do
   sleep 5
 done
+
+if ! kill -0 "${MT5_PID}" 2>/dev/null; then
+  fail "MetaTrader 5 exited unexpectedly, check ${MT5_LOG_FILE}"
+fi
 
 fail "HTTP service exited unexpectedly, check /config/logs/http.log"
