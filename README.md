@@ -49,9 +49,6 @@ http://<ec2-public-ip>:3000
 
 ```bash
 HTTP_PORT=8000
-MT5_LOGIN=
-MT5_PASSWORD=
-MT5_SERVER=
 ```
 
 ## 运行模型
@@ -62,15 +59,9 @@ MT5_SERVER=
 - 容器删除后，`/config/.wine`、日志和运行时状态都会一起删除
 - 容器内服务虚拟环境固定在 `/config/service-venv`
 - Windows Python 固定安装到 `C:\\Program Files\\Python39\\python.exe`
-- 启动脚本会直接运行：
-
-```text
-wine "C:\Program Files\MetaTrader 5\terminal64.exe" /portable
-```
-
-- 如果设置了 `MT5_CMD_OPTIONS`，会追加到启动命令后面
 - 运行期日志会同时输出到容器标准输出和 `/config/logs/mt5.log`
-- 容器启动时会在 MT5 就绪后自动同步依赖并启动 HTTP 服务
+- 容器启动时只检查 `terminal64.exe` 已准备好，然后自动同步依赖并启动 HTTP 服务
+- 容器启动阶段不会自动拉起 MT5 进程；后续启动/登录控制预留给 API 流程
 - 当前 `docker-compose.yml` 已暴露 `HTTP_PORT` 并挂载服务源码，便于后续只通过 `git pull` 更新上层服务代码
 - 宿主机仓库中的 `service/.venv` 不再使用；如存在，只会被日志警告并忽略
 - 启动日志会单独记录 MT5、uv、Python、HTTP 各步骤耗时
@@ -98,16 +89,16 @@ docker compose logs -f
 docker compose exec mt5 bash
 ```
 
-检查 MT5 进程：
-
-```bash
-docker compose exec mt5 pgrep -fa terminal64.exe
-```
-
-检查 MT5 是否已安装：
+检查 MT5 可执行文件是否已准备：
 
 ```bash
 docker compose exec mt5 test -f '/config/.wine/drive_c/Program Files/MetaTrader 5/terminal64.exe'
+```
+
+手工启动 MT5：
+
+```bash
+docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; /scripts/runtime/launch-mt5.sh'
 ```
 
 检查 Windows uv：
@@ -182,7 +173,7 @@ docker compose exec mt5 bash -lc 'find "/opt/MetaTrader 5" -maxdepth 2 -type f |
 - `mt5setup.exe` 仍然会在构建期下载并保留，供后续需要时恢复安装器路径
 - Windows Python 3.9.13 安装器会在构建期下载，并在容器启动时安装到 Wine prefix
 - Windows `uv` 通过 GitHub Releases 的预编译二进制压缩包提供，运行期只负责同步依赖，不再负责安装 Python
-- HTTP 相关脚本已接入容器启动链路；容器启动时会在 MT5 就绪后调用 `/scripts/runtime/http-start.sh`
+- HTTP 相关脚本已接入容器启动链路；容器启动时会在确认 `terminal64.exe` 存在后调用 `/scripts/runtime/http-start.sh`
 - 代码目录可以共享挂载，但 `service/.venv` 不再作为运行时环境；实际虚拟环境在容器内部 `/config`
 - 运行时不持久化本地数据，因此容器重建后不会保留运行期产生的文件
 - `docker-compose.yml` 只是本地单实例 demo；生产环境应由外部编排系统按用户拉起多个容器
