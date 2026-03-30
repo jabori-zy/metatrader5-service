@@ -4,6 +4,7 @@ set -euo pipefail
 WINEPREFIX="/config/.wine"
 MT5_LINUX_EXE="${WINEPREFIX}/drive_c/Program Files/MetaTrader 5/terminal64.exe"
 STARTUP_MARKER="/config/.mt5-startup-in-progress"
+HTTP_PORT="${HTTP_PORT:-8000}"
 
 if [[ -f "${STARTUP_MARKER}" ]]; then
   printf '[healthcheck] first-time startup initialization in progress, skipping health check\n'
@@ -20,8 +21,15 @@ if [[ ! -f "${MT5_LINUX_EXE}" ]]; then
   exit 1
 fi
 
-if ! pgrep -fa terminal64.exe >/dev/null; then
-  printf '[healthcheck] terminal64.exe process not detected\n' >&2
+# MetaTrader 5 is no longer required to be prestarted by the container entrypoint.
+# Keep the old process check for reference.
+# if ! pgrep -fa terminal64.exe >/dev/null; then
+#   printf '[healthcheck] terminal64.exe process not detected\n' >&2
+#   exit 1
+# fi
+
+if ! curl -fsS --max-time 2 "http://127.0.0.1:${HTTP_PORT}/" >/dev/null 2>&1; then
+  printf '[healthcheck] HTTP service is not ready on port %s\n' "${HTTP_PORT}" >&2
   exit 1
 fi
 

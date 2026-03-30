@@ -55,27 +55,43 @@ log "Windows uv installation completed in ${UV_INSTALL_DURATION}s"
 
 [[ -f "${MT5_LINUX_EXE}" ]] || fail "terminal64.exe not found: ${MT5_LINUX_EXE}"
 
-log "starting MetaTrader 5"
+log "terminal64.exe is ready at ${MT5_LINUX_EXE}"
+# MetaTrader 5 is no longer started here.
+# The HTTP service is responsible for initializing MetaTrader 5 and starting terminal64.exe
+# via MetaTrader5.initialize(..., terminal_path=...).
+#
+# log "starting MetaTrader 5"
 # shellcheck disable=SC2086
-wine "${MT5_LINUX_EXE}" /portable ${MT5_CMD_OPTIONS:-} >>"${MT5_LOG_FILE}" 2>&1 &
-MT5_PID=$!
+# wine "${MT5_LINUX_EXE}" /portable ${MT5_CMD_OPTIONS:-} >>"${MT5_LOG_FILE}" 2>&1 &
+# MT5_PID=$!
+#
+# for _ in $(seq 1 30); do
+#   if pgrep -fa terminal64.exe >/dev/null; then
+#     break
+#   fi
+#   sleep 2
+# done
 
-for _ in $(seq 1 30); do
-  if pgrep -fa terminal64.exe >/dev/null; then
-    TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
-    log "MetaTrader 5 started"
-    log "starting HTTP service"
-    HTTP_START_TIME=$SECONDS
-    /scripts/runtime/http-start.sh || fail "HTTP startup failed, check /config/logs/http.log"
-    HTTP_START_DURATION=$((SECONDS - HTTP_START_TIME))
-    TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
-    log "HTTP service started in ${HTTP_START_DURATION}s"
-    log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, http_start=${HTTP_START_DURATION}s, total=${TOTAL_DURATION}s"
-    cleanup_startup_marker
-    wait "${MT5_PID}"
-    exit $?
-  fi
-  sleep 2
+log "starting HTTP service"
+HTTP_START_TIME=$SECONDS
+/scripts/runtime/http-start.sh || fail "HTTP startup failed, check /config/logs/http.log"
+HTTP_START_DURATION=$((SECONDS - HTTP_START_TIME))
+TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
+log "HTTP service started in ${HTTP_START_DURATION}s"
+log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, http_start=${HTTP_START_DURATION}s, total=${TOTAL_DURATION}s"
+cleanup_startup_marker
+
+HTTP_PID_FILE="/config/run/http.pid"
+if [[ ! -f "${HTTP_PID_FILE}" ]]; then
+  fail "HTTP pid file not found after startup: ${HTTP_PID_FILE}"
+fi
+
+HTTP_PID="$(tr -d '[:space:]' <"${HTTP_PID_FILE}")"
+[[ -n "${HTTP_PID}" ]] || fail "HTTP pid file is empty: ${HTTP_PID_FILE}"
+
+log "monitoring HTTP service pid ${HTTP_PID}"
+while kill -0 "${HTTP_PID}" 2>/dev/null; do
+  sleep 5
 done
 
-fail "MetaTrader 5 process failed to start, check ${MT5_LOG_FILE}"
+fail "HTTP service exited unexpectedly, check /config/logs/http.log"

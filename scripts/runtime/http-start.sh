@@ -7,7 +7,9 @@ source "${SCRIPT_DIR}/http-env.sh"
 
 ensure_http_dirs
 require_http_runtime
-ensure_mt5_running
+# HTTP service now owns terminal startup through MetaTrader5.initialize(..., terminal_path=...).
+# Keep the old preflight for reference, but do not require terminal64.exe to be running here.
+# ensure_mt5_running
 
 if http_pid_is_running; then
   http_log "HTTP service is already running"
