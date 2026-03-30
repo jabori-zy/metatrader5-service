@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 
 
-def create_app(terminal) -> FastAPI:
+def create_app(terminal, skip_pull_config: bool = False) -> FastAPI:
     logger = logging.getLogger("MetaTrader5-service.app")
 
     app = FastAPI(
@@ -37,10 +37,11 @@ def create_app(terminal) -> FastAPI:
 
     initialize_service_status(app)
     app.state.terminal = terminal
+    app.state.skip_pull_config = skip_pull_config
 
     @app.on_event("startup")
     async def startup_event():
-        logger.info("scheduling service startup check")
+        logger.info("scheduling service startup check, skip_pull_config=%s", skip_pull_config)
         app.state.service_status_task = asyncio.create_task(run_service_startup_check(app))
 
     @app.on_event("shutdown")

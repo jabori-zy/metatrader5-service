@@ -105,6 +105,17 @@ def set_service_status(
 async def run_service_startup_check(app: FastAPI) -> None:
     try:
         logger.info("service startup check started")
+        if getattr(app.state, "skip_pull_config", False):
+            logger.info("skip_pull_config enabled; skipping user config pull and startup restore flow")
+            set_service_status(
+                app,
+                status=SERVICE_STATUS_READY,
+                reason=None,
+                message="Skipping user config pull; service is ready for manual debugging.",
+                manual_login_required=False,
+            )
+            return
+
         set_service_status(
             app,
             status=SERVICE_STATUS_PULLING_USER_CONFIG,
