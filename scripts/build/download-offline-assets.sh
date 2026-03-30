@@ -38,6 +38,8 @@ MT5_INSTALLER_DIR="${MT5_INSTALLER_DIR:-/opt/installers}"
 WINE_GECKO_DIR="${WINE_GECKO_DIR:-/opt/wine-offline/gecko}"
 WINE_MONO_DIR="${WINE_MONO_DIR:-/opt/wine-offline/mono}"
 MT5_SETUP_URL="${MT5_SETUP_URL:-https://download.terminal.free/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe}"
+PYTHON_VERSION="${PYTHON_VERSION:-3.9.13}"
+PYTHON_SETUP_URL="${PYTHON_SETUP_URL:-https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-amd64.exe}"
 UV_WINDOWS_ZIP_URL="${UV_WINDOWS_ZIP_URL:-https://github.com/astral-sh/uv/releases/download/0.10.11/uv-x86_64-pc-windows-msvc.zip}"
 UV_ARCHIVE_NAME="$(basename "${UV_WINDOWS_ZIP_URL}")"
 
@@ -55,6 +57,7 @@ log "Gecko version: $GECKO_VER"
 log "Mono version: $MONO_VER"
 
 download_file "$MT5_SETUP_URL" "$MT5_INSTALLER_DIR/mt5setup.exe"
+download_file "$PYTHON_SETUP_URL" "$MT5_INSTALLER_DIR/$(basename "${PYTHON_SETUP_URL}")"
 download_file "$UV_WINDOWS_ZIP_URL" "$MT5_INSTALLER_DIR/${UV_ARCHIVE_NAME}"
 download_file "https://dl.winehq.org/wine/wine-gecko/${GECKO_VER}/wine-gecko-${GECKO_VER}-x86.msi" \
   "$WINE_GECKO_DIR/wine-gecko-${GECKO_VER}-x86.msi"

@@ -53,6 +53,12 @@ UV_INSTALL_START=$SECONDS
 UV_INSTALL_DURATION=$((SECONDS - UV_INSTALL_START))
 log "Windows uv installation completed in ${UV_INSTALL_DURATION}s"
 
+log "running Windows Python installation"
+PYTHON_INSTALL_START=$SECONDS
+/scripts/build/install-python.sh || fail "Windows Python first-time installation failed, check ${MT5_LOG_FILE}"
+PYTHON_INSTALL_DURATION=$((SECONDS - PYTHON_INSTALL_START))
+log "Windows Python installation completed in ${PYTHON_INSTALL_DURATION}s"
+
 [[ -f "${MT5_LINUX_EXE}" ]] || fail "terminal64.exe not found: ${MT5_LINUX_EXE}"
 
 log "terminal64.exe is ready at ${MT5_LINUX_EXE}"
@@ -83,7 +89,7 @@ HTTP_START_TIME=$SECONDS
 HTTP_START_DURATION=$((SECONDS - HTTP_START_TIME))
 TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
 log "HTTP service started in ${HTTP_START_DURATION}s"
-log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, http_start=${HTTP_START_DURATION}s, total=${TOTAL_DURATION}s"
+log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, python_install=${PYTHON_INSTALL_DURATION}s, http_start=${HTTP_START_DURATION}s, total=${TOTAL_DURATION}s"
 cleanup_startup_marker
 
 HTTP_PID_FILE="/config/run/http.pid"

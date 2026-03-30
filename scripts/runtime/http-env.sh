@@ -14,10 +14,10 @@ SERVICE_MAIN_LINUX="${SERVICE_ROOT}/main.py"
 SERVICE_LOCKFILE="${SERVICE_ROOT}/uv.lock"
 LEGACY_SERVICE_VENV_LINUX="${SERVICE_ROOT}/.venv"
 UV_PROJECT_ENVIRONMENT_LINUX="${UV_PROJECT_ENVIRONMENT_LINUX:-/config/service-venv}"
-UV_PYTHON_INSTALL_DIR_LINUX="${UV_PYTHON_INSTALL_DIR_LINUX:-/config/uv/python}"
-UV_PYTHON_BIN_DIR_LINUX="${UV_PYTHON_BIN_DIR_LINUX:-/config/uv/bin}"
 UV_CACHE_DIR_LINUX="${UV_CACHE_DIR_LINUX:-/config/uv/cache}"
 SERVICE_VENV_PYTHON_LINUX="${SERVICE_VENV_PYTHON_LINUX:-${UV_PROJECT_ENVIRONMENT_LINUX}/Scripts/python.exe}"
+SYSTEM_PYTHON_LINUX_EXE="${SYSTEM_PYTHON_LINUX_EXE:-${WINEPREFIX}/drive_c/Program Files/Python39/python.exe}"
+SYSTEM_PYTHON_WIN_EXE="${SYSTEM_PYTHON_WIN_EXE:-C:\\Program Files\\Python39\\python.exe}"
 UV_LINUX_EXE="${UV_LINUX_EXE:-${WINEPREFIX}/drive_c/Program Files/uv/uv.exe}"
 
 HTTP_ENV="${HTTP_ENV:-dev}"
@@ -46,8 +46,6 @@ ensure_http_dirs() {
     "${HTTP_LOG_DIR}" \
     "${HTTP_RUN_DIR}" \
     "${UV_PROJECT_ENVIRONMENT_LINUX}" \
-    "${UV_PYTHON_INSTALL_DIR_LINUX}" \
-    "${UV_PYTHON_BIN_DIR_LINUX}" \
     "${UV_CACHE_DIR_LINUX}" \
     || http_fail "failed to prepare HTTP runtime directories"
   touch "${HTTP_LOG_FILE}" || http_fail "failed to create HTTP log file: ${HTTP_LOG_FILE}"
@@ -75,8 +73,6 @@ resolve_windows_uv() {
 
 resolve_uv_runtime_paths() {
   UV_PROJECT_ENVIRONMENT_WIN="$(winepath -w "${UV_PROJECT_ENVIRONMENT_LINUX}")"
-  UV_PYTHON_INSTALL_DIR_WIN="$(winepath -w "${UV_PYTHON_INSTALL_DIR_LINUX}")"
-  UV_PYTHON_BIN_DIR_WIN="$(winepath -w "${UV_PYTHON_BIN_DIR_LINUX}")"
   UV_CACHE_DIR_WIN="$(winepath -w "${UV_CACHE_DIR_LINUX}")"
 }
 

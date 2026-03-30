@@ -1,13 +1,13 @@
 # MT5 Docker V2
 
-一个单用户、启动时准备 MT5 和安装 Windows uv 的 MetaTrader 5 容器镜像：
+一个单用户、启动时准备 MT5、Windows uv 和 Windows Python 3.9.13 的 MetaTrader 5 容器镜像：
 
 - 1 用户 = 1 容器 = 1 Wine prefix = 1 MT5 = 1 KasmVNC 会话
 - Wine、离线安装资源和打包好的 `MetaTrader 5` 目录在镜像构建期准备
-- 容器启动时会将镜像内的 `MetaTrader 5` 目录复制到 `/config/.wine`，并安装 Windows `uv`
+- 容器启动时会将镜像内的 `MetaTrader 5` 目录复制到 `/config/.wine`，并安装 Windows `uv` 与 Windows Python 3.9.13
 - 当前 `docker-compose.yml` 不持久化 `/config`
 - `docker-compose.yml` 默认只挂载当前仓库到 `/workspace/metatrader5-service`
-- 服务虚拟环境和 uv 管理的 Python 都写入容器内部 `/config`
+- 服务虚拟环境写入容器内部 `/config`
 - 用户登录信息、业务配置等应由外部数据库或调度层管理
 
 ## 前提
@@ -58,10 +58,10 @@ MT5_SERVER=
 
 - 运行时 Wine prefix 固定在 `/config/.wine`
 - 容器启动时会先把镜像内的 `MetaTrader 5` 目录复制到 Wine 的 `C:\\Program Files`
-- MT5 文件复制完成后，会继续安装 Windows `uv`
+- MT5 文件复制完成后，会继续安装 Windows `uv` 和 Windows Python 3.9.13
 - 容器删除后，`/config/.wine`、日志和运行时状态都会一起删除
 - 容器内服务虚拟环境固定在 `/config/service-venv`
-- uv 管理的 Python 固定在 `/config/uv/python`
+- Windows Python 固定安装到 `C:\\Program Files\\Python39\\python.exe`
 - 启动脚本会直接运行：
 
 ```text
@@ -73,6 +73,7 @@ wine "C:\Program Files\MetaTrader 5\terminal64.exe" /portable
 - 容器启动时会在 MT5 就绪后自动同步依赖并启动 HTTP 服务
 - 当前 `docker-compose.yml` 已暴露 `HTTP_PORT` 并挂载服务源码，便于后续只通过 `git pull` 更新上层服务代码
 - 宿主机仓库中的 `service/.venv` 不再使用；如存在，只会被日志警告并忽略
+- 启动日志会单独记录 MT5、uv、Python、HTTP 各步骤耗时
 - 未来如需接入用户配置，建议由外部调度层按用户拉起容器，并通过环境变量或 secrets 注入配置引用
 
 ## 多用户部署方式
@@ -115,10 +116,10 @@ docker compose exec mt5 test -f '/config/.wine/drive_c/Program Files/MetaTrader 
 docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" --version'
 ```
 
-手工安装 Python：
+检查 Windows Python：
 
 ```bash
-docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; cd /workspace/metatrader5-service/service; wine "/config/.wine/drive_c/Program Files/uv/uv.exe" python install 3.9.13'
+docker compose exec mt5 bash -lc 'export WINEPREFIX=/config/.wine; wine "/config/.wine/drive_c/Program Files/Python39/python.exe" --version'
 ```
 
 手工同步服务依赖：
@@ -157,6 +158,7 @@ docker compose exec mt5 bash -lc 'find "/opt/MetaTrader 5" -maxdepth 2 -type f |
     ├── build
     │   ├── download-offline-assets.sh
     │   ├── install-mt5.sh
+    │   ├── install-python.sh
     │   ├── install-uv.sh
     │   ├── prepare-mt5-resource.sh
     │   └── preinstall-runtime.sh
@@ -178,9 +180,10 @@ docker compose exec mt5 bash -lc 'find "/opt/MetaTrader 5" -maxdepth 2 -type f |
 - 构建期会准备 Wine、离线安装资源以及镜像内的 `/opt/MetaTrader 5`
 - 当前阶段不再使用 `mt5setup.exe` 在运行期安装 MT5，而是直接复制镜像内的 `MetaTrader 5` 目录到 Wine prefix
 - `mt5setup.exe` 仍然会在构建期下载并保留，供后续需要时恢复安装器路径
-- Windows `uv` 通过 GitHub Releases 的预编译二进制压缩包提供，当前阶段只验证 `uv --version`
+- Windows Python 3.9.13 安装器会在构建期下载，并在容器启动时安装到 Wine prefix
+- Windows `uv` 通过 GitHub Releases 的预编译二进制压缩包提供，运行期只负责同步依赖，不再负责安装 Python
 - HTTP 相关脚本已接入容器启动链路；容器启动时会在 MT5 就绪后调用 `/scripts/runtime/http-start.sh`
-- 代码目录可以共享挂载，但 `service/.venv` 不再作为运行时环境；实际虚拟环境和 uv 管理的 Python 都在容器内部 `/config`
+- 代码目录可以共享挂载，但 `service/.venv` 不再作为运行时环境；实际虚拟环境在容器内部 `/config`
 - 运行时不持久化本地数据，因此容器重建后不会保留运行期产生的文件
 - `docker-compose.yml` 只是本地单实例 demo；生产环境应由外部编排系统按用户拉起多个容器
 - KasmVNC 基础认证只适合开发/测试环境，不建议直接裸露到公网

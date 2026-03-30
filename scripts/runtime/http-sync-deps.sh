@@ -17,12 +17,12 @@ http_log "syncing service dependencies with uv"
 (
   cd "${SERVICE_ROOT}"
   export UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT_WIN}"
-  export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR_WIN}"
-  export UV_PYTHON_BIN_DIR="${UV_PYTHON_BIN_DIR_WIN}"
   export UV_CACHE_DIR="${UV_CACHE_DIR_WIN}"
   run_gui wine "${UV_LINUX_EXE}" sync \
     --frozen \
-    --no-install-project
+    --no-install-project \
+    --no-python-downloads \
+    --python "${SYSTEM_PYTHON_WIN_EXE}"
 ) >>"${HTTP_LOG_FILE}" 2>&1 || http_fail "uv sync failed"
 
 [[ -f "${SERVICE_VENV_PYTHON_LINUX}" ]] || http_fail "service venv Python not found after sync: ${SERVICE_VENV_PYTHON_LINUX}"
