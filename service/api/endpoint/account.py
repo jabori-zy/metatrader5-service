@@ -8,6 +8,7 @@ DEFAULT_TERMINAL_PATH = "C:/Program Files/MetaTrader 5/terminal64.exe"
 
 class InitializeRequest(BaseModel):
     terminal_path: Optional[str] = None
+    portable: Optional[bool] = None
 
 
 class LoginRequest(BaseModel):
@@ -47,19 +48,22 @@ def create_router(terminal):
         Initialize MetaTrader 5 runtime in portable mode.
         """
         terminal_path = DEFAULT_TERMINAL_PATH
+        portable = True
         if payload and payload.terminal_path:
             terminal_path = payload.terminal_path
+        if payload and payload.portable is not None:
+            portable = payload.portable
 
         try:
             if not is_initialized(terminal):
-                init_result = terminal.initialize(terminal_path=terminal_path, portable=True)
+                init_result = terminal.initialize(terminal_path=terminal_path, portable=portable)
                 if not init_result:
                     last_error = get_last_error(terminal)
                     return response_error(last_error[0], last_error[1])
 
             return response_success({
                 "initialized": True,
-                "portable": True,
+                "portable": portable,
                 "terminal_path": terminal_path,
             })
         except Exception as e:
