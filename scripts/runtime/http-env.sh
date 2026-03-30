@@ -12,7 +12,12 @@ export WINEDLLOVERRIDES="${WINEDLLOVERRIDES:-winemenubuilder.exe=d}"
 SERVICE_ROOT="${SERVICE_ROOT:-/workspace/metatrader5-service/service}"
 SERVICE_MAIN_LINUX="${SERVICE_ROOT}/main.py"
 SERVICE_LOCKFILE="${SERVICE_ROOT}/uv.lock"
-SERVICE_VENV_PYTHON_LINUX="${SERVICE_ROOT}/.venv/Scripts/python.exe"
+LEGACY_SERVICE_VENV_LINUX="${SERVICE_ROOT}/.venv"
+UV_PROJECT_ENVIRONMENT_LINUX="${UV_PROJECT_ENVIRONMENT_LINUX:-/config/service-venv}"
+UV_PYTHON_INSTALL_DIR_LINUX="${UV_PYTHON_INSTALL_DIR_LINUX:-/config/uv/python}"
+UV_PYTHON_BIN_DIR_LINUX="${UV_PYTHON_BIN_DIR_LINUX:-/config/uv/bin}"
+UV_CACHE_DIR_LINUX="${UV_CACHE_DIR_LINUX:-/config/uv/cache}"
+SERVICE_VENV_PYTHON_LINUX="${SERVICE_VENV_PYTHON_LINUX:-${UV_PROJECT_ENVIRONMENT_LINUX}/Scripts/python.exe}"
 UV_LINUX_EXE="${UV_LINUX_EXE:-${WINEPREFIX}/drive_c/Program Files/uv/uv.exe}"
 
 HTTP_ENV="${HTTP_ENV:-dev}"
@@ -37,7 +42,14 @@ http_fail() {
 }
 
 ensure_http_dirs() {
-  mkdir -p "${HTTP_LOG_DIR}" "${HTTP_RUN_DIR}" || http_fail "failed to prepare HTTP runtime directories"
+  mkdir -p \
+    "${HTTP_LOG_DIR}" \
+    "${HTTP_RUN_DIR}" \
+    "${UV_PROJECT_ENVIRONMENT_LINUX}" \
+    "${UV_PYTHON_INSTALL_DIR_LINUX}" \
+    "${UV_PYTHON_BIN_DIR_LINUX}" \
+    "${UV_CACHE_DIR_LINUX}" \
+    || http_fail "failed to prepare HTTP runtime directories"
   touch "${HTTP_LOG_FILE}" || http_fail "failed to create HTTP log file: ${HTTP_LOG_FILE}"
 }
 
@@ -61,9 +73,22 @@ resolve_windows_uv() {
   UV_WIN_EXE="$(winepath -w "${UV_LINUX_EXE}")"
 }
 
+resolve_uv_runtime_paths() {
+  UV_PROJECT_ENVIRONMENT_WIN="$(winepath -w "${UV_PROJECT_ENVIRONMENT_LINUX}")"
+  UV_PYTHON_INSTALL_DIR_WIN="$(winepath -w "${UV_PYTHON_INSTALL_DIR_LINUX}")"
+  UV_PYTHON_BIN_DIR_WIN="$(winepath -w "${UV_PYTHON_BIN_DIR_LINUX}")"
+  UV_CACHE_DIR_WIN="$(winepath -w "${UV_CACHE_DIR_LINUX}")"
+}
+
 resolve_service_paths() {
   SERVICE_MAIN_WIN="$(winepath -w "${SERVICE_MAIN_LINUX}")"
   SERVICE_VENV_PYTHON_WIN="$(winepath -w "${SERVICE_VENV_PYTHON_LINUX}")"
+}
+
+warn_legacy_project_venv() {
+  if [[ -d "${LEGACY_SERVICE_VENV_LINUX}" ]]; then
+    http_log "warning: ignoring legacy project venv at ${LEGACY_SERVICE_VENV_LINUX}; using container venv at ${UV_PROJECT_ENVIRONMENT_LINUX}"
+  fi
 }
 
 http_pid_is_running() {
