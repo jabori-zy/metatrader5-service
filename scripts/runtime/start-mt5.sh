@@ -62,7 +62,18 @@ log "Windows Python installation completed in ${PYTHON_INSTALL_DURATION}s"
 [[ -f "${MT5_LINUX_EXE}" ]] || fail "terminal64.exe not found: ${MT5_LINUX_EXE}"
 
 log "terminal64.exe is ready at ${MT5_LINUX_EXE}"
-log "MetaTrader 5 launch is skipped during container startup"
+log "starting MetaTrader 5"
+MT5_START_TIME=$SECONDS
+/scripts/runtime/launch-mt5.sh || fail "MetaTrader 5 startup failed, check ${MT5_LOG_FILE}"
+for _ in $(seq 1 60); do
+  if pgrep -fa terminal64.exe >/dev/null; then
+    break
+  fi
+  sleep 1
+done
+pgrep -fa terminal64.exe >/dev/null || fail "MetaTrader 5 did not start within 60s, check ${MT5_LOG_FILE}"
+MT5_START_DURATION=$((SECONDS - MT5_START_TIME))
+log "MetaTrader 5 started in ${MT5_START_DURATION}s"
 
 log "starting HTTP service"
 HTTP_START_TIME=$SECONDS
@@ -70,7 +81,7 @@ HTTP_START_TIME=$SECONDS
 HTTP_START_DURATION=$((SECONDS - HTTP_START_TIME))
 TOTAL_DURATION=$((SECONDS - TOTAL_START_TIME))
 log "HTTP service started in ${HTTP_START_DURATION}s"
-log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, python_install=${PYTHON_INSTALL_DURATION}s, http_start=${HTTP_START_DURATION}s, total=${TOTAL_DURATION}s"
+log "startup summary: mt5_install=${MT5_INSTALL_DURATION}s, uv_install=${UV_INSTALL_DURATION}s, python_install=${PYTHON_INSTALL_DURATION}s, mt5_start=${MT5_START_DURATION}s, http_start=${HTTP_START_DURATION}s, total=${TOTAL_DURATION}s"
 cleanup_startup_marker
 
 HTTP_PID_FILE="/config/run/http.pid"
@@ -81,9 +92,16 @@ fi
 HTTP_PID="$(tr -d '[:space:]' <"${HTTP_PID_FILE}")"
 [[ -n "${HTTP_PID}" ]] || fail "HTTP pid file is empty: ${HTTP_PID_FILE}"
 
-log "monitoring HTTP service pid ${HTTP_PID}"
-while kill -0 "${HTTP_PID}" 2>/dev/null; do
+MT5_PID="$(pgrep -o -f terminal64.exe || true)"
+[[ -n "${MT5_PID}" ]] || fail "MetaTrader 5 pid not found after startup"
+
+log "monitoring MetaTrader 5 pid ${MT5_PID} and HTTP service pid ${HTTP_PID}"
+while kill -0 "${MT5_PID}" 2>/dev/null && kill -0 "${HTTP_PID}" 2>/dev/null; do
   sleep 5
 done
+
+if ! kill -0 "${MT5_PID}" 2>/dev/null; then
+  fail "MetaTrader 5 exited unexpectedly, check ${MT5_LOG_FILE}"
+fi
 
 fail "HTTP service exited unexpectedly, check /config/logs/http.log"
