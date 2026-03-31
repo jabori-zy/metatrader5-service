@@ -6,8 +6,8 @@ from pydantic import BaseModel
 from api.response import response_error, response_success
 from mt5_runtime import DEFAULT_TERMINAL_PATH, get_account_info_data, initialize_and_login_terminal
 from service_state import (
-    SERVICE_STATUS_NEEDS_MANUAL_LOGIN,
     SERVICE_STATUS_READY,
+    SERVICE_STATUS_WAITING_MANUAL_LOGIN,
     get_service_status,
     set_service_status,
 )
@@ -55,7 +55,7 @@ def create_router(terminal):
                 "service_status": service_status,
             })
 
-        if current_status != SERVICE_STATUS_NEEDS_MANUAL_LOGIN:
+        if current_status != SERVICE_STATUS_WAITING_MANUAL_LOGIN:
             return response_error(
                 -1,
                 "Service is not waiting for manual login confirmation.",

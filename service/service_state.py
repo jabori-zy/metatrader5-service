@@ -5,13 +5,13 @@ from typing import Optional
 from fastapi import FastAPI
 
 SERVICE_STATUS_STARTING = "STARTING"
-SERVICE_STATUS_NEEDS_MANUAL_LOGIN = "NEEDS_MANUAL_LOGIN"
+SERVICE_STATUS_WAITING_MANUAL_LOGIN = "WAITING_MANUAL_LOGIN"
 SERVICE_STATUS_READY = "READY"
 SERVICE_STATUS_ERROR = "ERROR"
 
 SERVICE_STATUSES = [
     SERVICE_STATUS_STARTING,
-    SERVICE_STATUS_NEEDS_MANUAL_LOGIN,
+    SERVICE_STATUS_WAITING_MANUAL_LOGIN,
     SERVICE_STATUS_READY,
     SERVICE_STATUS_ERROR,
 ]
@@ -88,7 +88,7 @@ async def run_service_startup_check(app: FastAPI) -> None:
         logger.info("service startup check started")
         set_service_status(
             app,
-            status=SERVICE_STATUS_NEEDS_MANUAL_LOGIN,
+            status=SERVICE_STATUS_WAITING_MANUAL_LOGIN,
             reason=None,
             message="MetaTrader 5 is running. Manual login is required.",
             manual_login_required=True,
