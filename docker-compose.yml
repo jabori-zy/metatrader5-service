@@ -22,8 +22,3 @@ services:
       MT5_LOGIN: ${MT5_LOGIN:-}
       MT5_PASSWORD: ${MT5_PASSWORD:-}
       MT5_SERVER: ${MT5_SERVER:-}
-      S3_BUCKET_NAME: ${S3_BUCKET_NAME:-metatrader5-config-dev-824597117854-ap-southeast-1-an}
-      AWS_REGION: ${AWS_REGION:-ap-southeast-1}
-      USER_CONFIG_USER_ID: ${USER_CONFIG_USER_ID:-1}
-      USER_CONFIG_SERVER: ${USER_CONFIG_SERVER:-EBCFinancialGroupKY-Demo}
-      USER_CONFIG_ACCOUNT: ${USER_CONFIG_ACCOUNT:-51236}

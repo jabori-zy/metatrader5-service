@@ -5,7 +5,6 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.9.13"
 dependencies = [
-    "boto3>=1.38.0,<2",
     "fastapi>=0.115.4,<0.116",
     "metatrader5>=5.0.5640",
     "uvicorn[standard]<0.42",
