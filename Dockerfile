@@ -19,7 +19,7 @@ ARG UV_VERSION
 ARG UV_WINDOWS_ZIP_URL
 ARG WINE_VERSION
 
-LABEL org.opencontainers.image.title="metatrader5-docker"
+LABEL org.opencontainers.image.title="metatrader5-service"
 LABEL org.opencontainers.image.description="MetaTrader 5 with Wine and KasmVNC"
 LABEL org.opencontainers.image.created="${BUILD_DATE}"
 LABEL org.opencontainers.image.version="${VERSION}"

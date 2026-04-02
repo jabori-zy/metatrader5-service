@@ -1,8 +1,8 @@
 services:
-  mt5:
+  metatrader5-service:
     build:
       context: .
-    image: metatrader5-docker:dev
+    image: metatrader5-service:dev
     platform: linux/amd64
     restart: unless-stopped
     security_opt:
