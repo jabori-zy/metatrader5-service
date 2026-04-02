@@ -1,5 +1,5 @@
 services:
-  metatrader5-service:
+  mt5:
     build:
       context: .
     image: metatrader5-service:dev
