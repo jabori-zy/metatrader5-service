@@ -39,8 +39,7 @@ ENV TITLE=MetaTrader5 \
     PYTHON_VERSION=${PYTHON_VERSION} \
     PYTHON_SETUP_URL=${PYTHON_SETUP_URL} \
     UV_VERSION=${UV_VERSION} \
-    UV_WINDOWS_ZIP_URL=${UV_WINDOWS_ZIP_URL} \
-    MT5_CMD_OPTIONS=
+    UV_WINDOWS_ZIP_URL=${UV_WINDOWS_ZIP_URL}
 
 RUN dpkg --add-architecture i386 \
     && apt-get update \

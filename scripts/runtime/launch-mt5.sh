@@ -30,9 +30,7 @@ fi
 
 log "launching MetaTrader 5"
 if [[ "${MT5_PORTABLE}" == "true" ]]; then
-  # shellcheck disable=SC2086
-  wine "${MT5_LINUX_EXE}" /portable ${MT5_CMD_OPTIONS:-} >>"${MT5_LOG_FILE}" 2>&1 &
+  wine "${MT5_LINUX_EXE}" /portable >>"${MT5_LOG_FILE}" 2>&1 &
 else
-  # shellcheck disable=SC2086
-  wine "${MT5_LINUX_EXE}" ${MT5_CMD_OPTIONS:-} >>"${MT5_LOG_FILE}" 2>&1 &
+  wine "${MT5_LINUX_EXE}" >>"${MT5_LOG_FILE}" 2>&1 &
 fi

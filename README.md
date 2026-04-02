@@ -48,7 +48,7 @@ docker compose up -d
 http://<ec2-public-ip>:3000
 ```
 
-使用 `.env` 中的 `CUSTOM_USER` 和 `PASSWORD` 登录 KasmVNC。
+使用 `.env` 中的 `VNC_USER` 和 `VNC_PASSWORD` 登录 KasmVNC。
 
 如需后续手工验证 HTTP 链路，请先在 `.env` 中补齐：
 
@@ -70,6 +70,7 @@ HTTP_PORT=8000
 - 当前 `docker-compose.yml` 已暴露 `HTTP_PORT` 并挂载服务源码，便于后续只通过 `git pull` 更新上层服务代码
 - 宿主机仓库中的 `service/.venv` 不再使用；如存在，只会被日志警告并忽略
 - 启动日志会单独记录 MT5、uv、Python、HTTP 各步骤耗时
+- 已移除 `MT5_CMD_OPTIONS`，运行期不再支持通过 `.env` 追加 MT5 启动参数
 - 未来如需接入用户配置，建议由外部调度层按用户拉起容器，并通过环境变量或 secrets 注入配置引用
 
 ## 多用户部署方式
