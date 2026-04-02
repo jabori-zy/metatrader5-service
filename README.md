@@ -31,6 +31,11 @@ cp .env.example .env
 docker build --platform linux/amd64 -t metatrader5-docker:dev .
 ```
 
+说明：
+
+- 当前 `Dockerfile` 依赖 BuildKit 的 `RUN --mount` 语法来避免将 `resource/` 目录持久化到最终镜像层
+- 如宿主机未默认启用 BuildKit，请使用 `DOCKER_BUILDKIT=1 docker build --platform linux/amd64 -t metatrader5-docker:dev .`
+
 3. 启动容器：
 
 ```bash

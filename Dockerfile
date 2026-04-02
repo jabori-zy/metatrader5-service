@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 ARG BUILD_DATE
 ARG VERSION=dev
 ARG MT5_SETUP_URL="https://download.terminal.free/cdn/web/metaquotes.software.corp/mt5/mt5setup.exe"
@@ -87,10 +88,9 @@ COPY --chmod=755 scripts/build/install-python.sh /scripts/build/install-python.s
 COPY --chmod=755 scripts/build/install-uv.sh /scripts/build/install-uv.sh
 COPY --chmod=755 scripts/build/prepare-mt5-resource.sh /scripts/build/prepare-mt5-resource.sh
 COPY --chmod=755 scripts/build/preinstall-runtime.sh /scripts/build/preinstall-runtime.sh
-COPY ["resource/MetaTrader 5", "/resource/MetaTrader 5"]
 
-RUN /scripts/build/preinstall-runtime.sh \
-    && rm -rf /resource
+RUN --mount=type=bind,source=resource,target=/resource,readonly \
+    /scripts/build/preinstall-runtime.sh
 
 COPY --chmod=755 scripts/runtime/bootstrap-prefix.sh /scripts/runtime/bootstrap-prefix.sh
 COPY --chmod=755 scripts/runtime/http-env.sh /scripts/runtime/http-env.sh
