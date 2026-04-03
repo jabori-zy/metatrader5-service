@@ -24,7 +24,8 @@ http_log "starting HTTP service"
 (
   trap '' HUP
   cd "${SERVICE_ROOT}"
-  exec </dev/null >>"${HTTP_LOG_FILE}" 2>&1
+  # Keep HTTP logs in the container log stream while preserving the dedicated file.
+  exec </dev/null > >(tee -a "${HTTP_LOG_FILE}") 2>&1
   run_gui wine "${SERVICE_VENV_PYTHON_LINUX}" "${SERVICE_MAIN_WIN}" \
     --env "${HTTP_ENV}" \
     --port "${HTTP_PORT}"

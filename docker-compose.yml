@@ -15,9 +15,6 @@ services:
     environment:
       CUSTOM_USER: ${VNC_USER}
       PASSWORD: ${VNC_PASSWORD}
-      PUID: ${PUID}
-      PGID: ${PGID}
+      PUID: "1000"
+      PGID: "1000"
       HTTP_PORT: ${HTTP_PORT:-8000}
-      MT5_LOGIN: ${MT5_LOGIN:-}
-      MT5_PASSWORD: ${MT5_PASSWORD:-}
-      MT5_SERVER: ${MT5_SERVER:-}
