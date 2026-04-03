@@ -23,7 +23,7 @@ http_log "syncing service dependencies with uv"
     --no-install-project \
     --no-python-downloads \
     --python "${SYSTEM_PYTHON_WIN_EXE}"
-) > >(tee -a "${HTTP_LOG_FILE}") 2>&1 || http_fail "uv sync failed"
+) > >(http_copy_to_container_logs) 2>&1 || http_fail "uv sync failed"
 
 [[ -f "${SERVICE_VENV_PYTHON_LINUX}" ]] || http_fail "service venv Python not found after sync: ${SERVICE_VENV_PYTHON_LINUX}"
 touch "${HTTP_DEPS_OK_FILE}" || http_fail "failed to update dependency sync marker"

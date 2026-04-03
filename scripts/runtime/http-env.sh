@@ -24,6 +24,7 @@ HTTP_ENV="${HTTP_ENV:-dev}"
 HTTP_PORT="${HTTP_PORT:-8000}"
 HTTP_LOG_DIR="${HTTP_LOG_DIR:-/config/logs}"
 HTTP_LOG_FILE="${HTTP_LOG_FILE:-${HTTP_LOG_DIR}/http.log}"
+HTTP_LOG_STREAM="${HTTP_LOG_STREAM:-/proc/1/fd/1}"
 HTTP_RUN_DIR="${HTTP_RUN_DIR:-/config/run}"
 HTTP_PID_FILE="${HTTP_PID_FILE:-${HTTP_RUN_DIR}/http.pid}"
 HTTP_DEPS_OK_FILE="${HTTP_DEPS_OK_FILE:-${HTTP_RUN_DIR}/http-deps.ok}"
@@ -31,9 +32,17 @@ HTTP_BOOT_TIMEOUT="${HTTP_BOOT_TIMEOUT:-15}"
 
 MT5_TERMINAL_PATH="${MT5_TERMINAL_PATH:-C:/Program Files/MetaTrader 5/terminal64.exe}"
 
+http_copy_to_container_logs() {
+  if [[ -w "${HTTP_LOG_STREAM}" ]]; then
+    tee -a "${HTTP_LOG_FILE}" "${HTTP_LOG_STREAM}" >/dev/null
+  else
+    tee -a "${HTTP_LOG_FILE}"
+  fi
+}
+
 http_log() {
   mkdir -p "${HTTP_LOG_DIR}" "${HTTP_RUN_DIR}"
-  printf '[runtime][http] %s\n' "$*" | tee -a "${HTTP_LOG_FILE}"
+  printf '[runtime][http] %s\n' "$*" | http_copy_to_container_logs
 }
 
 http_fail() {

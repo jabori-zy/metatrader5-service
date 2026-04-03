@@ -24,8 +24,7 @@ http_log "starting HTTP service"
 (
   trap '' HUP
   cd "${SERVICE_ROOT}"
-  # Write HTTP logs to both the dedicated file and Docker's log stream (PID 1 stdout).
-  exec </dev/null > >(tee -a "${HTTP_LOG_FILE}" >/proc/1/fd/1) 2>&1
+  exec </dev/null > >(http_copy_to_container_logs) 2>&1
   run_gui wine "${SERVICE_VENV_PYTHON_LINUX}" "${SERVICE_MAIN_WIN}" \
     --env "${HTTP_ENV}" \
     --port "${HTTP_PORT}"
