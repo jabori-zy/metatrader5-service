@@ -122,5 +122,5 @@ RUN chmod 755 /scripts /scripts/build /scripts/runtime /scripts/lib \
 
 EXPOSE 3000 8000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=600s --retries=3 \
   CMD /scripts/runtime/healthcheck.sh

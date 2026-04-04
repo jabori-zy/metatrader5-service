@@ -7,8 +7,8 @@ STARTUP_MARKER="/config/.mt5-startup-in-progress"
 HTTP_PORT="${HTTP_PORT:-8000}"
 
 if [[ -f "${STARTUP_MARKER}" ]]; then
-  printf '[healthcheck] first-time startup initialization in progress, skipping health check\n'
-  exit 0
+  printf '[healthcheck] first-time startup initialization in progress\n' >&2
+  exit 1
 fi
 
 if [[ ! -d "${WINEPREFIX}" ]]; then
