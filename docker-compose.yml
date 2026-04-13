@@ -13,8 +13,6 @@ services:
     volumes:
       - .:/workspace/metatrader5-service
     environment:
-      CUSTOM_USER: ${VNC_USER}
-      PASSWORD: ${VNC_PASSWORD}
       PUID: "1000"
       PGID: "1000"
       HTTP_PORT: ${HTTP_PORT:-8000}

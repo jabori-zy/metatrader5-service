@@ -48,7 +48,7 @@ docker compose up -d
 http://<ec2-public-ip>:3000
 ```
 
-使用 `.env` 中的 `VNC_USER` 和 `VNC_PASSWORD` 登录 KasmVNC。
+当前配置已关闭 KasmVNC 内置 Basic Auth，浏览器访问后会直接进入 KasmVNC 页面。
 
 如需后续手工验证 HTTP 链路，请先在 `.env` 中补齐：
 
@@ -183,4 +183,5 @@ docker compose exec mt5 bash -lc 'find "/opt/MetaTrader 5" -maxdepth 2 -type f |
 - 代码目录可以共享挂载，但 `service/.venv` 不再作为运行时环境；实际虚拟环境在容器内部 `/config`
 - 运行时不持久化本地数据，因此容器重建后不会保留运行期产生的文件
 - `docker-compose.yml` 只是本地单实例 demo；生产环境应由外部编排系统按用户拉起多个容器
-- KasmVNC 基础认证只适合开发/测试环境，不建议直接裸露到公网
+- 当前 `docker-compose.yml` 未启用 KasmVNC Basic Auth，`3000` 端口为无鉴权访问
+- 无鉴权模式只适合开发环境或受控网络，不建议直接裸露到公网
