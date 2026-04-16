@@ -28,7 +28,7 @@ def check_terminal_path_format(terminal_path: Optional[str]) -> str:
     return normalized
 
 
-def get_time_frame(time_frame: str) -> int | None:
+def get_time_frame(time_frame: str) -> Optional[int]:
     """
     get time frame
     Args:
