@@ -105,7 +105,6 @@ def create_router(terminal):
         if not t_info.get("trade_allowed", False):
             return response_error(
                 ValueError("Algo Trading is not enabled."),
-                extra={"service_status": get_service_status(request.app)},
                 status_code=403,
             )
 
