@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoint import account
+from .endpoint.metatrader5 import account
 from .endpoint import health
 from .endpoint import service_status
 # , symbol, market, order, basic, position

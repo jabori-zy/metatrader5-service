@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Response
 
-from api.response import response_success, response_error
+from api.response import response_success
 
 
 def create_router(terminal):

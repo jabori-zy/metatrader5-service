@@ -1,20 +1,21 @@
 from fastapi import APIRouter, Body, Request
 from typing import Optional
 from pydantic import BaseModel
+from api.error import Mt5Error
 from api.response import response_success, response_error
-from mt5_runtime import (
-    get_account_info_data,
-    initialize_and_login_terminal,
-    is_initialized,
-    login_terminal,
+from mt5_terminal import (
+    account_info,
+    initialize as terminal_initialize,
+    login as terminal_login,
 )
+from terminal_utils import check_terminal_path_format, get_last_error, is_initialized
 from service_state import SERVICE_STATUS_READY, get_service_status
 
 
 class InitializeRequest(BaseModel):
-    login: int
-    password: str
-    server: str
+    login: Optional[int] = None
+    password: Optional[str] = None
+    server: Optional[str] = None
     terminal_path: Optional[str] = None
     portable: Optional[bool] = None
 
@@ -47,7 +48,7 @@ class LoginRequest(BaseModel):
     }
 
 def create_router(terminal):
-    router = APIRouter(tags=["account"])
+    router = APIRouter(tags=["account"], prefix="/metatrader5")
 
     @router.post("/initialize")
     async def initialize(request: Request, payload: InitializeRequest = Body(...)):
@@ -63,33 +64,39 @@ def create_router(terminal):
             service_status = get_service_status(request.app)
             if service_status["status"] != SERVICE_STATUS_READY:
                 return response_error(
-                    -1,
-                    "Service is not ready for MT5 initialization.",
-                    {"service_status": service_status},
+                    ValueError("Service is not ready for MT5 initialization."),
+                    extra={"service_status": service_status},
+                    status_code=503,
                 )
 
-            initialized_and_logged_in, initialize_or_login_error, terminal_path, portable = initialize_and_login_terminal(
+            try:
+                terminal_path = check_terminal_path_format(terminal_path)
+            except ValueError as exc:
+                return response_error(exc, status_code=422)
+
+            initialized = terminal_initialize(
                 terminal,
+                terminal_path=terminal_path,
+                portable=portable,
                 login=payload.login,
                 password=payload.password,
                 server=payload.server,
-                terminal_path=terminal_path,
-                portable=portable,
-                launch_if_needed=True,
             )
-            if not initialized_and_logged_in:
-                return response_error(initialize_or_login_error[0], initialize_or_login_error[1])
+            if not initialized:
+                last_error = get_last_error(terminal)
+                return response_error(Mt5Error(last_error[0], last_error[1]))
 
             return response_success({
                 "initialized": True,
-                "logged_in": True,
                 "login": payload.login,
                 "server": payload.server,
                 "portable": portable,
                 "terminal_path": terminal_path,
             })
+        except ValueError as e:
+            return response_error(e, status_code=422)
         except Exception as e:
-            return response_error(-1, f"Initialize terminal failed: {str(e)}")
+            return response_error(Exception(f"Initialize terminal failed: {e}"), status_code=500)
 
     @router.post("/login")
     async def login(payload: LoginRequest):
@@ -98,16 +105,18 @@ def create_router(terminal):
         """
         try:
             if not is_initialized(terminal):
-                return response_error(-1, "terminal is not initialized; call /initialize first")
+                return response_error(ValueError("terminal is not initialized; call /initialize first"), status_code=409)
 
-            login_ok, login_error = login_terminal(
+            login_result = terminal_login(
                 terminal,
                 login=payload.login,
                 password=payload.password,
                 server=payload.server,
             )
-            if not login_ok:
-                return response_error(login_error[0], login_error[1])
+            # loging failed
+            if not login_result:
+                login_error = get_last_error(terminal)
+                return response_error(Mt5Error(login_error[0], login_error[1]))
 
             return response_success({
                 "logged_in": True,
@@ -115,7 +124,7 @@ def create_router(terminal):
                 "server": payload.server,
             })
         except Exception as e:
-            return response_error(-1, f"Login failed: {str(e)}")
+            return response_error(Exception(f"Login failed: {e}"), status_code=500)
 
     @router.get("/account_info")
     async def get_account_info():
@@ -125,11 +134,12 @@ def create_router(terminal):
         get the detailed information of the current MT5 account, including balance, equity, margin, free margin, etc.
         """
         try:
-            account_info_ok, account_info, account_info_error = get_account_info_data(terminal)
-            if not account_info_ok:
-                return response_error(account_info_error[0], account_info_error[1])
-            return response_success(account_info)
+            info = account_info(terminal)
+            if info is None:
+                account_info_error = get_last_error(terminal)
+                return response_error(Mt5Error(account_info_error[0], account_info_error[1]))
+            return response_success(info)
 
         except Exception as e:
-            return response_error(-1, f"Get account info failed: {str(e)}")
+            return response_error(Exception(f"Get account info failed: {e}"), status_code=500)
     return router

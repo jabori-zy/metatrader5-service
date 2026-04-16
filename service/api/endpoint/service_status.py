@@ -3,8 +3,10 @@ import logging
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
+from api.error import Mt5Error
 from api.response import response_error, response_success
-from mt5_runtime import DEFAULT_TERMINAL_PATH, get_account_info_data, initialize_and_login_terminal
+from mt5_terminal import account_info, initialize
+from terminal_utils import DEFAULT_TERMINAL_PATH, check_terminal_path_format, get_last_error
 from service_state import (
     SERVICE_STATUS_READY,
     SERVICE_STATUS_WAITING_MANUAL_LOGIN,
@@ -51,41 +53,49 @@ def create_router(terminal):
         if current_status == SERVICE_STATUS_READY:
             return response_success({
                 "confirmed": True,
-                "already_ready": True,
                 "service_status": service_status,
             })
 
         if current_status != SERVICE_STATUS_WAITING_MANUAL_LOGIN:
             return response_error(
-                -1,
-                "Service is not waiting for manual login confirmation.",
-                {"service_status": service_status},
+                ValueError("Service is not waiting for manual login confirmation."),
+                extra={"service_status": service_status},
+                status_code=409,
             )
 
         logger.info("confirm_manual_login requested for login=%s server=%s", payload.login, payload.server)
 
-        initialized_and_logged_in, initialize_or_login_error, terminal_path, portable = initialize_and_login_terminal(
+        try:
+            terminal_path = check_terminal_path_format(DEFAULT_TERMINAL_PATH)
+        except ValueError as exc:
+            return response_error(
+                exc,
+                extra={"service_status": get_service_status(request.app)},
+                status_code=422,
+            )
+
+        portable = True
+        initialized = initialize(
             terminal,
+            terminal_path=terminal_path,
+            portable=portable,
             login=payload.login,
             password=payload.password,
             server=payload.server,
-            terminal_path=DEFAULT_TERMINAL_PATH,
-            portable=True,
-            launch_if_needed=False,
         )
-        if not initialized_and_logged_in:
+        if not initialized:
+            last_error = get_last_error(terminal)
             return response_error(
-                initialize_or_login_error[0],
-                initialize_or_login_error[1],
-                {"service_status": get_service_status(request.app)},
+                Mt5Error(last_error[0], last_error[1]),
+                extra={"service_status": get_service_status(request.app)},
             )
 
-        account_info_ok, account_info, account_info_error = get_account_info_data(terminal)
-        if not account_info_ok:
+        info = account_info(terminal)
+        if info is None:
+            account_info_error = get_last_error(terminal)
             return response_error(
-                account_info_error[0],
-                account_info_error[1],
-                {"service_status": get_service_status(request.app)},
+                Mt5Error(account_info_error[0], account_info_error[1]),
+                extra={"service_status": get_service_status(request.app)},
             )
 
         updated_service_status = set_service_status(
@@ -104,9 +114,6 @@ def create_router(terminal):
         )
         return response_success({
             "confirmed": True,
-            "initialized": True,
-            "logged_in": True,
-            "account_info": account_info,
             "service_status": updated_service_status,
         })
 

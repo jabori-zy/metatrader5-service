@@ -1,5 +1,5 @@
 # Export endpoint modules for router to import
-from . import account
+from .metatrader5 import account
 from . import health
 from . import service_status
 

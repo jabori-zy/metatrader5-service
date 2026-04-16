@@ -1,6 +1,10 @@
 from datetime import datetime
 from typing import Any, Optional
 
+from fastapi.responses import JSONResponse
+
+from api.error import Mt5Error
+
 
 def response_success(data: Any) -> dict:
     return {
@@ -10,13 +14,18 @@ def response_success(data: Any) -> dict:
     }
 
 
-def response_error(mt5_error_code: int, message: str, extra: Optional[dict] = None) -> dict:
+def response_error(error, extra: Optional[dict] = None, status_code: Optional[int] = None) -> JSONResponse:
     response = {
         "success": False,
-        "error_code": mt5_error_code,
-        "message": message,
+        "message": str(error),
         "timestamp": datetime.now().isoformat(),
     }
+    if isinstance(error, Mt5Error):
+        response["mt5_error_code"] = error.error_code
+        if status_code is None:
+            status_code = 502
+    if status_code is None:
+        status_code = 400
     if extra:
         response.update(extra)
-    return response
+    return JSONResponse(status_code=status_code, content=response)
