@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from api.error import Mt5Error
 from api.response import response_error, response_success
-from mt5_terminal import account_info, initialize
+from mt5_terminal import account_info, initialize, terminal_info
 from terminal_utils import DEFAULT_TERMINAL_PATH, check_terminal_path_format, get_last_error
 from service_state import (
     SERVICE_STATUS_READY,
@@ -87,7 +87,6 @@ def create_router(terminal):
             last_error = get_last_error(terminal)
             return response_error(
                 Mt5Error(last_error[0], last_error[1]),
-                extra={"service_status": get_service_status(request.app)},
             )
 
         info = account_info(terminal)
@@ -95,7 +94,19 @@ def create_router(terminal):
             account_info_error = get_last_error(terminal)
             return response_error(
                 Mt5Error(account_info_error[0], account_info_error[1]),
+            )
+
+        t_info = terminal_info(terminal)
+        if t_info is None:
+            t_info_error = get_last_error(terminal)
+            return response_error(
+                Mt5Error(t_info_error[0], t_info_error[1]),
+            )
+        if not t_info.get("trade_allowed", False):
+            return response_error(
+                ValueError("Algo Trading is not enabled."),
                 extra={"service_status": get_service_status(request.app)},
+                status_code=403,
             )
 
         updated_service_status = set_service_status(
