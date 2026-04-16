@@ -23,7 +23,7 @@ def response_error(error, extra: Optional[dict] = None, status_code: Optional[in
     if isinstance(error, Mt5Error):
         response["mt5_error_code"] = error.error_code
         if status_code is None:
-            status_code = 502
+            status_code = 424 # Failed Dependency, since the error is related to MT5 operations
     if status_code is None:
         status_code = 400
     if extra:
