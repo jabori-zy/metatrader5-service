@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 from api.error import Mt5Error
 from api.response import response_success, response_error
+
 from mt5_terminal import (
     symbols_total as mt5_symbols_total,
     symbols_get as mt5_symbols_get,
@@ -15,16 +16,6 @@ from mt5_terminal import (
 )
 from terminal_utils import get_last_error
 from api.utils import check_init
-
-
-class SymbolsGetRequest(BaseModel):
-    group: Optional[str] = None
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {"group": "forex"}
-        }
-    }
 
 
 class SymbolRequest(BaseModel):
@@ -62,14 +53,14 @@ def create_router(terminal):
         except Exception as e:
             return response_error(Exception(f"Get symbols total failed: {e}"), status_code=500)
 
-    @router.post("/symbols_get")
-    async def symbols_get(payload: SymbolsGetRequest = Body(...)):
+    @router.get("/symbols_get")
+    async def symbols_get(group: Optional[str] = None):
         """Get the list of all symbols, optionally filtered by group."""
         err = check_init(terminal)
         if err:
             return err
         try:
-            result = mt5_symbols_get(terminal, group=payload.group)
+            result = mt5_symbols_get(terminal, group=group)
             if result is None:
                 mt5_err = get_last_error(terminal)
                 return response_error(Mt5Error(mt5_err[0], mt5_err[1]))
@@ -77,14 +68,14 @@ def create_router(terminal):
         except Exception as e:
             return response_error(Exception(f"Get symbols failed: {e}"), status_code=500)
 
-    @router.post("/symbol_info")
-    async def symbol_info(payload: SymbolRequest = Body(...)):
+    @router.get("/symbol_info")
+    async def symbol_info(symbol: str):
         """Get information about a specific symbol."""
         err = check_init(terminal)
         if err:
             return err
         try:
-            info = mt5_symbol_info(terminal, payload.symbol)
+            info = mt5_symbol_info(terminal, symbol)
             if info is None:
                 mt5_err = get_last_error(terminal)
                 return response_error(Mt5Error(mt5_err[0], mt5_err[1]))
@@ -92,14 +83,14 @@ def create_router(terminal):
         except Exception as e:
             return response_error(Exception(f"Get symbol info failed: {e}"), status_code=500)
 
-    @router.post("/symbol_info_tick")
-    async def symbol_info_tick(payload: SymbolRequest = Body(...)):
+    @router.get("/symbol_info_tick")
+    async def symbol_info_tick(symbol: str):
         """Get the latest tick for a specific symbol."""
         err = check_init(terminal)
         if err:
             return err
         try:
-            tick = mt5_symbol_info_tick(terminal, payload.symbol)
+            tick = mt5_symbol_info_tick(terminal, symbol)
             if tick is None:
                 mt5_err = get_last_error(terminal)
                 return response_error(Mt5Error(mt5_err[0], mt5_err[1]))
@@ -134,14 +125,14 @@ def create_router(terminal):
         except Exception as e:
             return response_error(Exception(f"Market book add failed: {e}"), status_code=500)
 
-    @router.post("/market_book_get")
-    async def market_book_get(payload: SymbolRequest = Body(...)):
+    @router.get("/market_book_get")
+    async def market_book_get(symbol: str):
         """Get the current market depth (DOM) for a symbol."""
         err = check_init(terminal)
         if err:
             return err
         try:
-            result = mt5_market_book_get(terminal, payload.symbol)
+            result = mt5_market_book_get(terminal, symbol)
             if result is None:
                 mt5_err = get_last_error(terminal)
                 return response_error(Mt5Error(mt5_err[0], mt5_err[1]))

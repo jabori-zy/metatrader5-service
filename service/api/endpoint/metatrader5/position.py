@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter
 from typing import Optional
-from pydantic import BaseModel
 from api.error import Mt5Error
 from api.response import response_success, response_error
 from mt5_terminal import (
@@ -9,18 +8,6 @@ from mt5_terminal import (
 )
 from terminal_utils import get_last_error
 from api.utils import check_init
-
-
-class PositionsGetRequest(BaseModel):
-    symbol: Optional[str] = None
-    group: Optional[str] = None
-    ticket: Optional[int] = None
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {"symbol": "EURUSD"}
-        }
-    }
 
 
 def create_router(terminal):
@@ -37,8 +24,12 @@ def create_router(terminal):
         except Exception as e:
             return response_error(Exception(f"Get positions total failed: {e}"), status_code=500)
 
-    @router.post("/positions_get")
-    async def positions_get(payload: PositionsGetRequest = Body(...)):
+    @router.get("/positions_get")
+    async def positions_get(
+        symbol: Optional[str] = None,
+        group: Optional[str] = None,
+        ticket: Optional[int] = None,
+    ):
         """
         Get open positions, optionally filtered by symbol, group or ticket.
         Only one filter parameter is applied at a time (symbol > group > ticket).
@@ -47,7 +38,7 @@ def create_router(terminal):
         if err:
             return err
         try:
-            result = mt5_positions_get(terminal, symbol=payload.symbol, group=payload.group, ticket=payload.ticket)
+            result = mt5_positions_get(terminal, symbol=symbol, group=group, ticket=ticket)
             if result is None:
                 mt5_err = get_last_error(terminal)
                 return response_error(Mt5Error(mt5_err[0], mt5_err[1]))
