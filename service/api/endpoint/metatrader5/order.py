@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Query
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
@@ -103,49 +103,6 @@ def _to_list(result):
     return [item._asdict() if hasattr(item, "_asdict") else item for item in result]
 
 
-class OrdersGetRequest(BaseModel):
-    symbol: Optional[str] = None
-    group: Optional[str] = None
-    ticket: Optional[int] = None
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {"symbol": "EURUSD"}
-        }
-    }
-
-
-class HistoryDateRequest(BaseModel):
-    date_from: str
-    date_to: str
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "date_from": "2024-01-01T00:00:00",
-                "date_to": "2024-02-01T00:00:00",
-            }
-        }
-    }
-
-
-class HistoryGetRequest(BaseModel):
-    date_from: Optional[str] = None
-    date_to: Optional[str] = None
-    group: Optional[str] = None
-    ticket: Optional[int] = None
-    position: Optional[int] = None
-
-    model_config = {
-        "json_schema_extra": {
-            "example": {
-                "date_from": "2024-01-01T00:00:00",
-                "date_to": "2024-02-01T00:00:00",
-            }
-        }
-    }
-
-
 def _trade_request_to_dict(payload: TradeRequest) -> dict:
     return {k: v for k, v in payload.model_dump().items() if v is not None}
 
@@ -166,8 +123,12 @@ def create_router(terminal):
         except Exception as e:
             return response_error(Exception(f"Get orders total failed: {e}"), status_code=500)
 
-    @router.post("/orders_get")
-    async def orders_get(payload: OrdersGetRequest = Body(...)):
+    @router.get("/orders_get")
+    async def orders_get(
+        symbol: Optional[str] = None,
+        group: Optional[str] = None,
+        ticket: Optional[int] = None,
+    ):
         """
         Get active pending orders, optionally filtered by symbol, group or ticket.
         Only one filter parameter is applied at a time (symbol > group > ticket).
@@ -176,7 +137,7 @@ def create_router(terminal):
         if err:
             return err
         try:
-            result = mt5_orders_get(terminal, symbol=payload.symbol, group=payload.group, ticket=payload.ticket)
+            result = mt5_orders_get(terminal, symbol=symbol, group=group, ticket=ticket)
             if result is None:
                 mt5_err = get_last_error(terminal)
                 return response_error(Mt5Error(mt5_err[0], mt5_err[1]))
@@ -251,8 +212,11 @@ def create_router(terminal):
 
     # ── History orders ─────────────────────────────────────────────────────────
 
-    @router.post("/history_orders_total")
-    async def history_orders_total(payload: HistoryDateRequest = Body(...)):
+    @router.get("/history_orders_total")
+    async def history_orders_total(
+        date_from: str = Query(..., description="ISO 8601 datetime string"),
+        date_to: str = Query(..., description="ISO 8601 datetime string"),
+    ):
         """
         Get the total number of orders in trading history for a date range.
 
@@ -263,16 +227,22 @@ def create_router(terminal):
         if err:
             return err
         try:
-            dt_from = parse_datetime(payload.date_from)
-            dt_to = parse_datetime(payload.date_to)
+            dt_from = parse_datetime(date_from)
+            dt_to = parse_datetime(date_to)
             return response_success({"total": mt5_history_orders_total(terminal, dt_from, dt_to)})
         except ValueError as e:
             return response_error(e, status_code=422)
         except Exception as e:
             return response_error(Exception(f"Get history orders total failed: {e}"), status_code=500)
 
-    @router.post("/history_orders_get")
-    async def history_orders_get(payload: HistoryGetRequest = Body(...)):
+    @router.get("/history_orders_get")
+    async def history_orders_get(
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        group: Optional[str] = None,
+        ticket: Optional[int] = None,
+        position: Optional[int] = None,
+    ):
         """
         Get orders from trading history.
 
@@ -282,15 +252,15 @@ def create_router(terminal):
         if err:
             return err
         try:
-            dt_from = parse_datetime(payload.date_from) if payload.date_from else None
-            dt_to = parse_datetime(payload.date_to) if payload.date_to else None
+            dt_from = parse_datetime(date_from) if date_from else None
+            dt_to = parse_datetime(date_to) if date_to else None
             result = mt5_history_orders_get(
                 terminal,
                 date_from=dt_from,
                 date_to=dt_to,
-                group=payload.group,
-                ticket=payload.ticket,
-                position=payload.position,
+                group=group,
+                ticket=ticket,
+                position=position,
             )
             if result is None:
                 mt5_err = get_last_error(terminal)
@@ -303,8 +273,11 @@ def create_router(terminal):
 
     # ── History deals ──────────────────────────────────────────────────────────
 
-    @router.post("/history_deals_total")
-    async def history_deals_total(payload: HistoryDateRequest = Body(...)):
+    @router.get("/history_deals_total")
+    async def history_deals_total(
+        date_from: str = Query(..., description="ISO 8601 datetime string"),
+        date_to: str = Query(..., description="ISO 8601 datetime string"),
+    ):
         """
         Get the total number of deals in trading history for a date range.
 
@@ -315,16 +288,22 @@ def create_router(terminal):
         if err:
             return err
         try:
-            dt_from = parse_datetime(payload.date_from)
-            dt_to = parse_datetime(payload.date_to)
+            dt_from = parse_datetime(date_from)
+            dt_to = parse_datetime(date_to)
             return response_success({"total": mt5_history_deals_total(terminal, dt_from, dt_to)})
         except ValueError as e:
             return response_error(e, status_code=422)
         except Exception as e:
             return response_error(Exception(f"Get history deals total failed: {e}"), status_code=500)
 
-    @router.post("/history_deals_get")
-    async def history_deals_get(payload: HistoryGetRequest = Body(...)):
+    @router.get("/history_deals_get")
+    async def history_deals_get(
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        group: Optional[str] = None,
+        ticket: Optional[int] = None,
+        position: Optional[int] = None,
+    ):
         """
         Get deals from trading history.
 
@@ -334,15 +313,15 @@ def create_router(terminal):
         if err:
             return err
         try:
-            dt_from = parse_datetime(payload.date_from) if payload.date_from else None
-            dt_to = parse_datetime(payload.date_to) if payload.date_to else None
+            dt_from = parse_datetime(date_from) if date_from else None
+            dt_to = parse_datetime(date_to) if date_to else None
             result = mt5_history_deals_get(
                 terminal,
                 date_from=dt_from,
                 date_to=dt_to,
-                group=payload.group,
-                ticket=payload.ticket,
-                position=payload.position,
+                group=group,
+                ticket=ticket,
+                position=position,
             )
             if result is None:
                 mt5_err = get_last_error(terminal)
