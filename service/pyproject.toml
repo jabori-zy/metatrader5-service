@@ -7,5 +7,6 @@ requires-python = ">=3.9.13"
 dependencies = [
     "fastapi>=0.115.4,<0.116",
     "metatrader5>=5.0.5640",
+    "pytz>=2024.2",
     "uvicorn[standard]<0.42",
 ]

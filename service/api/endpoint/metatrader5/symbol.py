@@ -106,6 +106,9 @@ def create_router(terminal):
             return err
         try:
             result = mt5_symbol_select(terminal, payload.symbol, payload.enable)
+            if not result:
+                mt5_err = get_last_error(terminal)
+                return response_error(Mt5Error(mt5_err[0], mt5_err[1]))
             return response_success({"selected": result})
         except Exception as e:
             return response_error(Exception(f"Symbol select failed: {e}"), status_code=500)

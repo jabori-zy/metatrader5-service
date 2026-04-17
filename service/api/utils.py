@@ -1,7 +1,12 @@
 from datetime import datetime
 
+import pytz
+
 from api.response import response_error
 from terminal_utils import is_initialized
+
+
+UTC_TIMEZONE = pytz.timezone("Etc/UTC")
 
 
 def check_init(terminal):
@@ -11,5 +16,7 @@ def check_init(terminal):
 
 
 def parse_datetime(value: str) -> datetime:
-    return datetime.fromisoformat(value)
-
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return UTC_TIMEZONE.localize(parsed)
+    return parsed.astimezone(UTC_TIMEZONE)
