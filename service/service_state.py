@@ -9,13 +9,6 @@ SERVICE_STATUS_WAITING_MANUAL_LOGIN = "WAITING_MANUAL_LOGIN"
 SERVICE_STATUS_READY = "READY"
 SERVICE_STATUS_ERROR = "ERROR"
 
-SERVICE_STATUSES = [
-    SERVICE_STATUS_STARTING,
-    SERVICE_STATUS_WAITING_MANUAL_LOGIN,
-    SERVICE_STATUS_READY,
-    SERVICE_STATUS_ERROR,
-]
-
 SERVICE_REASON_STARTUP_CHECK_FAILED = "SERVICE_STARTUP_CHECK_FAILED"
 
 logger = logging.getLogger("MetaTrader5-service.service_state")
@@ -37,7 +30,6 @@ def build_service_status(
         "message": message,
         "manual_login_required": manual_login_required,
         "updated_at": _now_isoformat(),
-        "all_statuses": SERVICE_STATUSES,
     }
 
 

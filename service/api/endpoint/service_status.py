@@ -124,7 +124,7 @@ def create_router(terminal):
         )
         return response_success({
             "confirmed": True,
-            "service_status": updated_service_status,
+            "service_status": updated_service_status["status"],
         })
 
     return router
