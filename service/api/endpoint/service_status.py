@@ -31,6 +31,29 @@ class ConfirmManualLoginRequest(BaseModel):
     }
 
 
+def _validate_terminal_readiness(terminal):
+    info = account_info(terminal)
+    if info is None:
+        account_info_error = get_last_error(terminal)
+        return response_error(
+            Mt5Error(account_info_error[0], account_info_error[1]),
+        )
+
+    t_info = terminal_info(terminal)
+    if t_info is None:
+        t_info_error = get_last_error(terminal)
+        return response_error(
+            Mt5Error(t_info_error[0], t_info_error[1]),
+        )
+    if not t_info.get("trade_allowed", False):
+        return response_error(
+            ValueError("Algo Trading is not enabled."),
+            status_code=403,
+        )
+
+    return None
+
+
 def create_router(terminal):
     router = APIRouter(tags=["service"])
     logger = logging.getLogger("MetaTrader5-service.service")
@@ -51,6 +74,9 @@ def create_router(terminal):
         current_status = service_status["status"]
 
         if current_status == SERVICE_STATUS_READY:
+            readiness_error = _validate_terminal_readiness(terminal)
+            if readiness_error is not None:
+                return readiness_error
             return response_success({
                 "confirmed": True,
                 "service_status": service_status,
@@ -89,24 +115,9 @@ def create_router(terminal):
                 Mt5Error(last_error[0], last_error[1]),
             )
 
-        info = account_info(terminal)
-        if info is None:
-            account_info_error = get_last_error(terminal)
-            return response_error(
-                Mt5Error(account_info_error[0], account_info_error[1]),
-            )
-
-        t_info = terminal_info(terminal)
-        if t_info is None:
-            t_info_error = get_last_error(terminal)
-            return response_error(
-                Mt5Error(t_info_error[0], t_info_error[1]),
-            )
-        if not t_info.get("trade_allowed", False):
-            return response_error(
-                ValueError("Algo Trading is not enabled."),
-                status_code=403,
-            )
+        readiness_error = _validate_terminal_readiness(terminal)
+        if readiness_error is not None:
+            return readiness_error
 
         updated_service_status = set_service_status(
             request.app,
