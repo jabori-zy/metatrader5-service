@@ -48,7 +48,7 @@ def _validate_terminal_readiness(terminal):
     if not t_info.get("trade_allowed", False):
         return response_error(
             ValueError("Algo Trading is not enabled."),
-            status_code=403,
+            status_code=424,
         )
 
     return None
