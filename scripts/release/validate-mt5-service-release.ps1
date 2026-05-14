@@ -62,12 +62,13 @@ if (-not $tagName) {
     Fail "Unable to resolve release tag from GITHUB_REF_NAME or git describe"
 }
 
-$tagPattern = '^mt5-service-v(?<version>\d+\.\d+\.\d+)(?:-(?<env>dev|test|staging))?$'
+$tagPattern = '^mt5-service-v(?<version>\d+\.\d+\.\d+)(?:-(?<env>dev|test|staging)(?:\.(?<build>[1-9]\d*))?)?$'
 if ($tagName -match $tagPattern) {
     $tagVersion = $Matches["version"]
     $releaseEnv = $Matches["env"]
+    $releaseBuild = $Matches["build"]
 } else {
-    Fail "Invalid release tag '$tagName'. Expected mt5-service-v1.2.3 or mt5-service-v1.2.3-dev/test/staging"
+    Fail "Invalid release tag '$tagName'. Expected mt5-service-v1.2.3 or mt5-service-v1.2.3-dev/test/staging with optional .1/.2 prerelease build suffix"
 }
 
 if (-not $releaseEnv) {
@@ -105,6 +106,7 @@ $isPrerelease = if ($releaseEnv -eq "production") { "false" } else { "true" }
 Write-GitHubOutput -Name "tag_name" -Value $tagName
 Write-GitHubOutput -Name "release_name" -Value $tagName
 Write-GitHubOutput -Name "release_env" -Value $releaseEnv
+Write-GitHubOutput -Name "release_build" -Value $releaseBuild
 Write-GitHubOutput -Name "version" -Value $tagVersion
 Write-GitHubOutput -Name "prerelease" -Value $isPrerelease
 

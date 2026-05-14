@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^mt5-service-v\d+\.\d+\.\d+(?:-(?:dev|test|staging))?$')]
+    [ValidatePattern('^mt5-service-v\d+\.\d+\.\d+(?:-(?:dev|test|staging)(?:\.[1-9]\d*)?)?$')]
     [string]$TagName
 )
 
@@ -26,15 +26,17 @@ $distRoot = Join-Path $repoRoot "dist"
 $runtimeName = "mt5-service-http-runtime"
 $runtimePath = Join-Path $distRoot $runtimeName
 
-$tagPattern = '^mt5-service-v(?<version>\d+\.\d+\.\d+)(?:-(?<env>dev|test|staging))?$'
+$tagPattern = '^mt5-service-v(?<version>\d+\.\d+\.\d+)(?:-(?<env>dev|test|staging)(?:\.(?<build>[1-9]\d*))?)?$'
 if ($TagName -match $tagPattern) {
     $assetVersion = "v$($Matches["version"])"
     $assetEnv = $Matches["env"]
+    $assetBuild = $Matches["build"]
 } else {
-    throw "Invalid release tag '$TagName'. Expected mt5-service-v1.2.3 or mt5-service-v1.2.3-dev/test/staging"
+    throw "Invalid release tag '$TagName'. Expected mt5-service-v1.2.3 or mt5-service-v1.2.3-dev/test/staging with optional .1/.2 prerelease build suffix"
 }
 
-$assetSuffix = if ($assetEnv) { "$assetVersion-$assetEnv" } else { $assetVersion }
+$assetPrerelease = if ($assetBuild) { "$assetEnv.$assetBuild" } else { $assetEnv }
+$assetSuffix = if ($assetPrerelease) { "$assetVersion-$assetPrerelease" } else { $assetVersion }
 $assetName = "mt5-service-windows-x64-$assetSuffix.zip"
 $assetPath = Join-Path $distRoot $assetName
 
