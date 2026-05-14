@@ -49,7 +49,7 @@ uv run pyinstaller `
     --noconfirm `
     --clean `
     --onedir `
-    --name "mt5-service-http" `
+    --name "mt5-service" `
     --distpath $runtimePath `
     --workpath (Join-Path $repoRoot "build/pyinstaller") `
     --specpath (Join-Path $repoRoot "build/pyinstaller") `
@@ -59,8 +59,8 @@ uv run pyinstaller `
     --collect-all starlette `
     main.py
 
-$appDir = Join-Path $runtimePath "mt5-service-http"
-$exePath = Join-Path $appDir "mt5-service-http.exe"
+$appDir = Join-Path $runtimePath "mt5-service"
+$exePath = Join-Path $appDir "mt5-service.exe"
 if (-not (Test-Path $exePath)) {
     throw "PyInstaller output exe not found: $exePath"
 }
