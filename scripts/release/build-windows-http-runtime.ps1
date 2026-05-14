@@ -25,7 +25,17 @@ $serviceRoot = Join-Path $repoRoot "service"
 $distRoot = Join-Path $repoRoot "dist"
 $runtimeName = "mt5-service-http-runtime"
 $runtimePath = Join-Path $distRoot $runtimeName
-$assetName = "mt5-service-http-runtime-windows-x64-$TagName.zip"
+
+$tagPattern = '^mt5-service-v(?<version>\d+\.\d+\.\d+)(?:-(?<env>dev|test|staging))?$'
+if ($TagName -match $tagPattern) {
+    $assetVersion = "v$($Matches["version"])"
+    $assetEnv = $Matches["env"]
+} else {
+    throw "Invalid release tag '$TagName'. Expected mt5-service-v1.2.3 or mt5-service-v1.2.3-dev/test/staging"
+}
+
+$assetSuffix = if ($assetEnv) { "$assetVersion-$assetEnv" } else { $assetVersion }
+$assetName = "mt5-service-windows-x64-$assetSuffix.zip"
 $assetPath = Join-Path $distRoot $assetName
 
 Remove-Item -Recurse -Force $runtimePath -ErrorAction SilentlyContinue
