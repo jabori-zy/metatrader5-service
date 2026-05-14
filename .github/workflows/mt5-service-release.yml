@@ -1,0 +1,56 @@
+name: MT5 Service Release
+
+on:
+  push:
+    tags:
+      - "mt5-service-v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish Windows HTTP runtime
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Validate release tag
+        id: release
+        shell: pwsh
+        run: ./scripts/release/validate-mt5-service-release.ps1
+
+      - name: Install service dependencies
+        shell: pwsh
+        working-directory: service
+        run: uv sync --locked
+
+      - name: Install PyInstaller
+        shell: pwsh
+        working-directory: service
+        run: uv pip install pyinstaller
+
+      - name: Build Windows HTTP runtime
+        id: build
+        shell: pwsh
+        run: ./scripts/release/build-windows-http-runtime.ps1 -TagName "${{ steps.release.outputs.tag_name }}"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag_name }}
+          name: ${{ steps.release.outputs.release_name }}
+          prerelease: ${{ steps.release.outputs.prerelease }}
+          files: ${{ steps.build.outputs.asset_path }}
