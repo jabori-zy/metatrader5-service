@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^mt5-service-v\d+\.\d+\.\d+(?:-(?:dev|test|staging)(?:\.[1-9]\d*)?)?$')]
+    [ValidatePattern('^desktop-v\d+\.\d+\.\d+(?:-(?:dev|test|beta|rc)\.[1-9]\d*)?$')]
     [string]$TagName
 )
 
@@ -26,18 +26,14 @@ $distRoot = Join-Path $repoRoot "dist"
 $runtimeName = "mt5-service-http-runtime"
 $runtimePath = Join-Path $distRoot $runtimeName
 
-$tagPattern = '^mt5-service-v(?<version>\d+\.\d+\.\d+)(?:-(?<env>dev|test|staging)(?:\.(?<build>[1-9]\d*))?)?$'
+$tagPattern = '^desktop-(?<version>v\d+\.\d+\.\d+(?:-(?:dev|test|beta|rc)\.[1-9]\d*)?)$'
 if ($TagName -match $tagPattern) {
-    $assetVersion = "v$($Matches["version"])"
-    $assetEnv = $Matches["env"]
-    $assetBuild = $Matches["build"]
+    $releaseVersion = $Matches["version"]
 } else {
-    throw "Invalid release tag '$TagName'. Expected mt5-service-v1.2.3 or mt5-service-v1.2.3-dev/test/staging with optional .1/.2 prerelease build suffix"
+    throw "Invalid release tag '$TagName'. Expected desktop-v1.2.3, desktop-v1.2.3-dev.1, desktop-v1.2.3-test.1, desktop-v1.2.3-beta.1, or desktop-v1.2.3-rc.1"
 }
 
-$assetPrerelease = if ($assetBuild) { "$assetEnv.$assetBuild" } else { $assetEnv }
-$assetSuffix = if ($assetPrerelease) { "$assetVersion-$assetPrerelease" } else { $assetVersion }
-$assetName = "mt5-service-windows-x64-$assetSuffix.zip"
+$assetName = "metatrader5-service-desktop-$releaseVersion-windows-x64.zip"
 $assetPath = Join-Path $distRoot $assetName
 
 Remove-Item -Recurse -Force $runtimePath -ErrorAction SilentlyContinue

@@ -1,0 +1,59 @@
+name: Cloud Version Release
+
+on:
+  push:
+    tags:
+      - "cloud-v*"
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: cloud-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      tag_commit: ${{ steps.release.outputs.tag_commit }}
+      release_version: ${{ steps.release.outputs.release_version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      target_env: ${{ steps.release.outputs.target_env }}
+      image_name: ${{ steps.release.outputs.image_name }}
+      image_tag: ${{ steps.release.outputs.image_tag }}
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate Cloud tag, version, and source branch
+        id: release
+        shell: bash
+        run: bash scripts/ci/validate-cloud-release.sh
+
+      - name: Verify GHCR image tag does not exist
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci/verify-ghcr-image-tag.sh "${{ steps.release.outputs.image_name }}" "${{ steps.release.outputs.image_tag }}"
+
+  docker-image:
+    needs:
+      - validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+
+      - name: Build and push GHCR image
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci/build-and-push-cloud-image.sh "${{ needs.validate.outputs.image_name }}" "${{ needs.validate.outputs.image_tag }}" "${{ needs.validate.outputs.tag_commit }}"

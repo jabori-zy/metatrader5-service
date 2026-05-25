@@ -1,0 +1,110 @@
+name: Desktop Version Release
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      tag_commit: ${{ steps.release.outputs.tag_commit }}
+      release_version: ${{ steps.release.outputs.release_version }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      target_env: ${{ steps.release.outputs.target_env }}
+      desktop_windows_asset: ${{ steps.release.outputs.desktop_windows_asset }}
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate Desktop tag, version, and source branch
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci/validate-desktop-release.sh
+
+  build-desktop-windows:
+    needs:
+      - validate
+    runs-on: windows-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.9.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+
+      - name: Install service dependencies
+        shell: pwsh
+        working-directory: service
+        run: uv sync --locked
+
+      - name: Install PyInstaller
+        shell: pwsh
+        working-directory: service
+        run: uv pip install pyinstaller
+
+      - name: Build Windows HTTP runtime
+        shell: pwsh
+        run: ./scripts/release/build-windows-http-runtime.ps1 -TagName "${{ needs.validate.outputs.tag }}"
+
+      - name: Upload Desktop release asset
+        uses: actions/upload-artifact@v6
+        with:
+          name: desktop-windows-x64
+          path: dist/${{ needs.validate.outputs.desktop_windows_asset }}
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    needs:
+      - validate
+      - build-desktop-windows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+
+      - name: Download Desktop release asset
+        uses: actions/download-artifact@v7
+        with:
+          name: desktop-windows-x64
+          path: release-assets
+
+      - name: Verify release does not exist
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/ci/verify-github-release-not-exists.sh "${{ needs.validate.outputs.tag }}"
+
+      - name: Create Desktop GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.validate.outputs.tag }}
+          name: MetaTrader5 Service Desktop ${{ needs.validate.outputs.release_version }}
+          draft: false
+          prerelease: ${{ needs.validate.outputs.prerelease }}
+          fail_on_unmatched_files: true
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
